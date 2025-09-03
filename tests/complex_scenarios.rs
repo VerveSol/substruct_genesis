@@ -1,7 +1,22 @@
 use serde::{Deserialize, Serialize};
 use substruct_genesis::SubstructBuilder;
 
+// ============================================================================
+// COMPLEX CUSTOM TYPES TESTS
+// ============================================================================
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SubstructBuilder)]
+struct Person {
+    #[substruct_field(primitive)]
+    name: String,
+    #[substruct_field(primitive)]
+    age: u32,
+    #[substruct_field(nested, nested_type = "AddressBuilder")]
+    address: Address,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SubstructBuilder)]
+#[substruct_builder(name = "AddressBuilder")]
 struct Address {
     #[substruct_field(primitive)]
     street: String,
@@ -12,22 +27,12 @@ struct Address {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SubstructBuilder)]
-struct Person {
-    #[substruct_field(primitive)]
-    name: String,
-    #[substruct_field(primitive)]
-    age: u32,
-    #[substruct_field(nested)]
-    address: Address,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SubstructBuilder)]
 struct Company {
     #[substruct_field(primitive)]
     name: String,
     #[substruct_field(nested)]
     ceo: Person,
-    #[substruct_field(nested)]
+    #[substruct_field(nested, nested_type = "AddressBuilder")]
     address: Address,
     #[substruct_field(primitive)]
     employee_count: u32,
@@ -35,9 +40,9 @@ struct Company {
 
 #[test]
 fn test_custom_type_derivation() {
-    let address_update = AddressSubstruct::new(
-        Some("123 New St".to_string()),
-        Some("New City".to_string()),
+    let address_update = AddressBuilder::new(
+        Some("123 Main St".to_string()),
+        Some("Main City".to_string()),
         Some("12345".to_string()),
     );
 
@@ -47,11 +52,18 @@ fn test_custom_type_derivation() {
     assert_eq!(person_update.name, Some("John".to_string()));
     assert_eq!(person_update.age, Some(30));
     assert!(person_update.address.is_some());
+
+    if let Some(address) = &person_update.address {
+        assert_eq!(address.street, Some("123 Main St".to_string()));
+        assert_eq!(address.city, Some("Main City".to_string()));
+        assert_eq!(address.zip, Some("12345".to_string()));
+    }
 }
+
 #[test]
 fn test_nested_custom_types() {
-    // Test nested substruct creation and field validation
-    let address_update = AddressSubstruct::new(
+    // Test deep nesting with company → person → address
+    let address_update = AddressBuilder::new(
         Some("456 New St".to_string()),
         Some("New City".to_string()),
         None,
@@ -65,8 +77,8 @@ fn test_nested_custom_types() {
 
     let company_update = CompanySubstruct::new(
         Some("New Corp".to_string()),
-        Some(person_update.clone()),
-        Some(address_update.clone()),
+        Some(person_update),
+        Some(address_update),
         Some(200),
     );
 
@@ -118,4 +130,37 @@ fn test_custom_type_empty_update() {
     assert_eq!(empty_update.name, None);
     assert_eq!(empty_update.age, None);
     assert!(empty_update.address.is_none());
+}
+
+// ============================================================================
+// EDGE CASES TESTS
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SubstructBuilder)]
+struct EmptyStruct {}
+
+#[test]
+fn test_empty_struct() {
+    let update = EmptyStructSubstruct::default();
+
+    // Should compile and work with empty structs
+    // Empty structs have no fields, so no is_empty method is generated
+    let _: EmptyStructSubstruct = update;
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SubstructBuilder)]
+struct SingleFieldStruct {
+    #[substruct_field(primitive)]
+    field: String,
+}
+
+#[test]
+fn test_single_field_struct() {
+    let update = SingleFieldStructSubstruct::new(Some("test".to_string()));
+
+    assert_eq!(update.field, Some("test".to_string()));
+    assert!(!update.is_empty());
+
+    let empty = SingleFieldStructSubstruct::default();
+    assert!(empty.is_empty());
 }

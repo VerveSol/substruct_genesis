@@ -35,6 +35,7 @@ The `SubstructBuilder` macro generates a substruct for your original struct, con
 - **JSON Fields**: Handle complex types as `Option<serde_json::Value>`
 - **Nested Types**: Support nested substruct builders with custom naming
 - **Custom Struct Names**: Configure the generated substruct name at the struct level
+- **Advanced Nested Naming**: Custom naming for nested types in complex hierarchies
 - **No Dependencies**: Substructs don't reference or depend on the original struct
 
 ## Usage
@@ -149,6 +150,27 @@ struct Profile {
 // - address: Option<AddressBuilder>
 ```
 
+**Advanced Usage in Complex Hierarchies:**
+```rust
+#[derive(SubstructBuilder)]
+#[substruct_builder(name = "AddressBuilder")]
+struct Address {
+    #[substruct_field(primitive)]
+    street: String,
+    #[substruct_field(primitive)]
+    city: String,
+}
+
+#[derive(SubstructBuilder)]
+struct Person {
+    #[substruct_field(nested, nested_type = "AddressBuilder")]
+    address: Address,
+}
+
+// Both Person and Company can use AddressBuilder
+// for consistent naming across the hierarchy
+```
+
 #### Struct-Level Naming
 Customize the entire substruct name:
 
@@ -239,6 +261,40 @@ let address_update = AddressBuilder::new(
 let profile_update = ProfileSubstruct::new(Some(address_update));
 ```
 
+**Advanced Nested Naming Example:**
+```rust
+#[derive(SubstructBuilder)]
+#[substruct_builder(name = "AddressBuilder")]
+struct Address {
+    #[substruct_field(primitive)]
+    street: String,
+    #[substruct_field(primitive)]
+    city: String,
+}
+
+#[derive(SubstructBuilder)]
+struct Person {
+    #[substruct_field(primitive)]
+    name: String,
+    #[substruct_field(nested, nested_type = "AddressBuilder")]
+    address: Address,
+}
+
+#[derive(SubstructBuilder)]
+struct Company {
+    #[substruct_field(nested)]
+    ceo: Person,
+    #[substruct_field(nested, nested_type = "AddressBuilder")]
+    address: Address,
+}
+
+// Creates a deep hierarchy with custom naming
+let company_update = CompanySubstruct::new(
+    Some(person_update),
+    Some(address_update),
+);
+```
+
 ### Unwrapped Fields
 
 ```rust
@@ -293,17 +349,12 @@ The project includes a comprehensive test suite that validates all macro functio
 | Test File | Tests | Status | Purpose |
 |-----------|-------|--------|---------|
 | `basic_functionality.rs` | 5 | ✅ All Passing | Core macro functionality and field exclusion |
-| `custom_types.rs` | 4 | ✅ All Passing | Nested structs and complex field types |
-| `primitive_fields.rs` | 2 | ✅ All Passing | Primitive field handling and wrapping |
-| `json_fields.rs` | 3 | ✅ All Passing | JSON field serialization support |
-| `nested_types.rs` | 2 | ✅ All Passing | Nested struct generation |
-| `edge_cases.rs` | 2 | ✅ All Passing | Edge case handling |
-| `debug_wrap.rs` | 1 | ✅ All Passing | Debug attribute and wrapping |
-| `simple_nested.rs` | 1 | ✅ All Passing | Simple nested struct scenarios |
-| `struct_level_names.rs` | 1 | ✅ All Passing | Custom struct naming |
-| `wrap_attribute.rs` | 1 | ✅ All Passing | Field wrapping configuration |
+| `field_types.rs` | 7 | ✅ All Passing | Primitive, JSON, and nested field handling |
+| `configuration.rs` | 4 | ✅ All Passing | Attributes, wrapping, naming, and debug |
+| `complex_scenarios.rs` | 6 | ✅ All Passing | Complex nested types and edge cases |
+| `integration.rs` | 2 | ✅ All Passing | Multiple features working together |
 
-**Total: 22 tests, all passing** ✅
+**Total: 24 tests, all passing** ✅
 
 ### Detailed Test Breakdown
 
@@ -323,127 +374,77 @@ Tests the fundamental behavior of the macro with a simple struct containing both
 - Only `name` and `active` fields appear in the substruct
 - `age` field is absent from all substruct operations
 
-#### 2. `custom_types.rs` - Complex Type Handling
+#### 2. `field_types.rs` - Field Type Handling
 
-Tests nested structs, custom types, and complex field relationships.
-
-**Test Cases:**
-- **`test_custom_type_derivation`**: Basic nested substruct creation
-- **`test_nested_custom_types`**: Deep nesting with company → person → address
-- **`test_custom_type_none_update`**: Partial field updates with None values
-- **`test_custom_type_empty_update`**: Default substruct creation and validation
-
-**Key Validation:**
-- Nested substructs are generated correctly
-- Complex field hierarchies work properly
-- Field values are set and retrieved correctly
-- Default states are handled properly
-
-#### 3. `primitive_fields.rs` - Primitive Field Tests
-
-Tests primitive field handling, wrapping, and unwrapping behavior.
+Comprehensive tests for all field types: primitive, JSON, and nested.
 
 **Test Cases:**
-- **`test_primitive_struct_creation`**: Basic primitive field substruct creation
-- **`test_primitive_struct_empty_update`**: Empty substruct validation
+- **Primitive Fields**: Basic primitive field substruct creation and validation
+- **JSON Fields**: JSON field serialization, mixed field types, and nested context
+- **Nested Types**: Basic nested struct creation and source conversion
 
 **Key Validation:**
 - Primitive fields are wrapped in `Option<T>` by default
-- Unwrapped fields work correctly
-- Default values are properly set
-
-#### 4. `json_fields.rs` - JSON Field Support
-
-Tests JSON field serialization and handling.
-
-**Test Cases:**
-- **`test_json_field`**: Basic JSON field functionality
-- **`test_primitive_field`**: Mixed JSON and primitive fields
-- **`test_json_struct_has_preferences_field`**: JSON field in nested context
-
-**Key Validation:**
 - JSON fields are properly typed as `Option<serde_json::Value>`
-- Mixed field types work together
-- JSON fields integrate with other field types
-
-#### 5. `nested_types.rs` - Nested Structure Tests
-
-Tests nested struct generation and field handling.
-
-**Test Cases:**
-- **`test_nested_struct_derivation`**: Basic nested struct creation
-- **`test_nested_struct_from_source`**: Source conversion for nested types
-
-**Key Validation:**
 - Nested structs are generated with correct field types
-- Source conversion works for nested structures
-- Field relationships are maintained
+- Mixed field types work together seamlessly
 
-#### 6. `edge_cases.rs` - Edge Case Handling
+#### 3. `configuration.rs` - Configuration and Attributes
 
-Tests edge cases and boundary conditions.
-
-**Test Cases:**
-- **`test_empty_struct`**: Struct with no fields
-- **`test_single_field_struct`**: Minimal struct with one field
-
-**Key Validation:**
-- Empty structs are handled gracefully
-- Single field structs work correctly
-- Edge cases don't cause compilation errors
-
-#### 7. `debug_wrap.rs` - Debug and Wrapping
-
-Tests debug attribute and field wrapping behavior.
+Tests all configuration options: attributes, wrapping, naming, and debug.
 
 **Test Cases:**
-- **`test_debug_wrap`**: Debug attribute with wrapped fields
+- **Debug and Wrapping**: Debug attribute with wrapped fields
+- **Simple Nesting**: Basic nested struct scenarios
+- **Custom Naming**: Struct-level naming functionality
+- **Wrap Attributes**: Field wrapping configuration and parsing
 
 **Key Validation:**
 - Debug attributes work with wrapped fields
-- Field wrapping doesn't interfere with debug output
-
-#### 8. `simple_nested.rs` - Simple Nesting
-
-Tests basic nested struct scenarios.
-
-**Test Cases:**
-- **`test_simple_nested`**: Simple nested struct creation
-
-**Key Validation:**
-- Basic nesting works correctly
-- Field types are properly inferred
-
-#### 9. `struct_level_names.rs` - Custom Naming
-
-Tests custom struct naming functionality.
-
-**Test Cases:**
-- **`test_struct_level_names`**: Custom substruct naming
-
-**Key Validation:**
 - Custom names are applied correctly
-- Generated structs use specified names
-
-#### 10. `wrap_attribute.rs` - Wrapping Configuration
-
-Tests field wrapping attribute behavior.
-
-**Test Cases:**
-- **`test_wrap_attribute_parsing`**: Wrap attribute parsing
-
-**Key Validation:**
 - Wrap attributes are parsed correctly
 - Field wrapping behavior is configurable
+
+#### 4. `complex_scenarios.rs` - Complex Type Scenarios
+
+Tests complex nested types, custom types, and edge cases with advanced naming features.
+
+**Test Cases:**
+- **Complex Custom Types**: Deep nesting with company → person → address using custom nested type names
+- **Custom Nested Naming**: `AddressBuilder` custom naming for nested structs
+- **Edge Cases**: Empty structs, single field structs, and boundary conditions
+- **Advanced Scenarios**: Partial updates, None values, and empty states
+
+**Key Validation:**
+- Complex field hierarchies work properly with custom naming
+- Custom nested type names are applied correctly (`AddressBuilder` instead of `AddressSubstruct`)
+- Edge cases are handled gracefully
+- Empty structs don't cause compilation errors
+- Advanced scenarios work as expected
+
+#### 5. `integration.rs` - Feature Integration
+
+Tests how multiple features work together in complex scenarios.
+
+**Test Cases:**
+- **Complex Integration**: Custom naming, mixed field types, nesting, and wrapping
+- **Mixed Operations**: Default creation, partial updates, and source conversion
+
+**Key Validation:**
+- All features work together seamlessly
+- Complex integrations handle multiple field types
+- Mixed operations work correctly
+- Source conversion handles all field types properly
 
 ### Running Tests
 
 #### Individual Test Files
 ```bash
 cargo test --test basic_functionality
-cargo test --test custom_types
-cargo test --test primitive_fields
-# ... etc
+cargo test --test field_types
+cargo test --test configuration
+cargo test --test complex_scenarios
+cargo test --test integration
 ```
 
 #### All Tests
@@ -499,6 +500,6 @@ The Substruct Genesis macro provides a clean, efficient way to generate independ
 4. **Configuration options work** - wrapping, naming, and attribute parsing
 5. **Edge cases are handled** - empty structs, single fields, complex nesting
 
-The test suite serves as both validation of current functionality and documentation of expected behavior, ensuring the macro remains reliable and well-tested as it evolves.
+The test suite serves as both validation of current functionality and documentation of expected behavior, ensuring the macro remains reliable and well-tested as it evolves. With 24 comprehensive tests covering all aspects of the macro's functionality, the project maintains high quality and reliability standards.
 
 
