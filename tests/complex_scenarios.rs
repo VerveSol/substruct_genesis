@@ -137,18 +137,6 @@ fn test_custom_type_empty_update() {
 // ============================================================================
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SubstructBuilder)]
-struct EmptyStruct {}
-
-#[test]
-fn test_empty_struct() {
-    let update = EmptyStructSubstruct::default();
-
-    // Should compile and work with empty structs
-    // Empty structs have no fields, so no is_empty method is generated
-    let _: EmptyStructSubstruct = update;
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SubstructBuilder)]
 struct SingleFieldStruct {
     #[substruct_field(primitive)]
     field: String,

@@ -318,6 +318,7 @@ let update = ConfigSubstruct::new(
 - **Independent Substructs**: The generated substruct has no dependencies on the original struct
 - **No Update Methods**: The substruct is designed for building update data, not applying it to the original struct
 - **Clean Separation**: Perfect for API endpoints, configuration updates, and other scenarios where you want to separate update data from the target structure
+- **Validation**: The macro now requires at least one field to be tagged with `#[substruct_field]` - empty structs or structs with no tagged fields will cause compilation errors
 
 ## Requirements
 
@@ -332,6 +333,7 @@ The macro provides clear error messages for:
 - Unsupported field types
 - Misuse of `serde_json::Value` with `#[substruct_field(json)]`
 - Invalid nested type specifications
+- **No tagged fields**: Compilation error when no fields are tagged with `#[substruct_field]`
 
 ## Performance
 
@@ -351,10 +353,13 @@ The project includes a comprehensive test suite that validates all macro functio
 | `basic_functionality.rs` | 5 | ✅ All Passing | Core macro functionality and field exclusion |
 | `field_types.rs` | 7 | ✅ All Passing | Primitive, JSON, and nested field handling |
 | `configuration.rs` | 4 | ✅ All Passing | Attributes, wrapping, naming, and debug |
-| `complex_scenarios.rs` | 6 | ✅ All Passing | Complex nested types and edge cases |
+| `complex_scenarios.rs` | 5 | ✅ All Passing | Complex nested types and edge cases |
 | `integration.rs` | 2 | ✅ All Passing | Multiple features working together |
+| `error_handling.rs` | 7 | ✅ All Passing | Macro validation and error handling |
+| `real_world.rs` | 9 | ✅ All Passing | API, database, and e-commerce patterns |
+| `edge_cases.rs` | 9 | ✅ All Passing | Boundary conditions and edge cases |
 
-**Total: 24 tests, all passing** ✅
+**Total: 48 tests, all passing** ✅
 
 ### Detailed Test Breakdown
 
@@ -436,6 +441,58 @@ Tests how multiple features work together in complex scenarios.
 - Mixed operations work correctly
 - Source conversion handles all field types properly
 
+#### 6. `error_handling.rs` - Macro Validation and Error Handling
+
+Comprehensive tests for macro compilation, validation, and edge case handling.
+
+**Test Cases:**
+- **Field Type Validation**: Mixed field types, complex nesting, and attribute combinations
+- **Trait Implementation**: Clone, Debug, PartialEq, Default, and From traits
+- **Serialization**: JSON serialization and deserialization validation
+- **Edge Cases**: Single fields and complex scenarios
+
+**Key Validation:**
+- Macro handles all field types correctly
+- Generated structs implement required traits
+- Serialization works with edge case values
+- Complex scenarios work properly
+
+#### 7. `real_world.rs` - Real-World Use Case Patterns
+
+Tests common patterns used in production applications.
+
+**Test Cases:**
+- **API Update Patterns**: User profile updates and nested structure modifications
+- **Database Patterns**: Record updates, soft deletes, and version management
+- **Configuration Management**: App settings and partial configuration updates
+- **E-commerce Patterns**: Product updates, inventory management, and category changes
+- **Workflow Patterns**: Step status updates and process management
+
+**Key Validation:**
+- Common update patterns work correctly
+- Partial updates handle field exclusion properly
+- Nested updates maintain data integrity
+- Real-world scenarios are handled gracefully
+
+#### 8. `edge_cases.rs` - Boundary Conditions and Edge Cases
+
+Tests extreme scenarios and boundary conditions to ensure robustness.
+
+**Test Cases:**
+- **Minimal Structs**: Single fields and complex field types
+- **Field Type Edge Cases**: Arrays, tuples, chars, bytes, and complex types
+- **Deep Nesting**: Multi-level nested structures (4+ levels deep)
+- **Custom Naming**: Very long names and special characters
+- **Serialization Edge Cases**: Empty strings, zero values, infinity, and NaN
+- **Boundary Conditions**: Min/max values and extreme numeric ranges
+
+**Key Validation:**
+- Extreme scenarios are handled gracefully
+- Deep nesting works correctly
+- Custom naming handles edge cases
+- Serialization works with boundary values
+- All field types are supported properly
+
 ### Running Tests
 
 #### Individual Test Files
@@ -445,6 +502,9 @@ cargo test --test field_types
 cargo test --test configuration
 cargo test --test complex_scenarios
 cargo test --test integration
+cargo test --test error_handling
+cargo test --test real_world
+cargo test --test edge_cases
 ```
 
 #### All Tests
@@ -500,6 +560,6 @@ The Substruct Genesis macro provides a clean, efficient way to generate independ
 4. **Configuration options work** - wrapping, naming, and attribute parsing
 5. **Edge cases are handled** - empty structs, single fields, complex nesting
 
-The test suite serves as both validation of current functionality and documentation of expected behavior, ensuring the macro remains reliable and well-tested as it evolves. With 24 comprehensive tests covering all aspects of the macro's functionality, the project maintains high quality and reliability standards.
+The test suite serves as both validation of current functionality and documentation of expected behavior, ensuring the macro remains reliable and well-tested as it evolves. With 48 comprehensive tests covering all aspects of the macro's functionality, the project maintains high quality and reliability standards.
 
 

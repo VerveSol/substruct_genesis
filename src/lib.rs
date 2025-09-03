@@ -315,66 +315,55 @@ pub fn derive_updatable_struct(input: TokenStream) -> TokenStream {
         }
     };
 
-    let output = if updatable_fields.is_empty() {
-        quote! {
-            #derive_clause
-            pub struct #update_struct_name;
+    // Validate that at least one field is tagged for substruct generation
+    if updatable_fields.is_empty() {
+        abort!(
+            struct_name,
+            "No fields are tagged with #[substruct_field]. At least one field must be tagged to generate a substruct."
+        );
+    }
 
-            impl #update_struct_name {
-                pub fn new() -> Self {
-                    Self
+    let output = quote! {
+        #derive_clause
+        pub struct #update_struct_name {
+            #(#updatable_fields,)*
+        }
+
+        impl #update_struct_name {
+            pub fn new(#(#field_names: #field_types),*) -> Self {
+                Self {
+                    #(#field_names,)*
                 }
             }
 
-            impl Default for #update_struct_name {
-                fn default() -> Self {
-                    Self::new()
+            pub fn from_source(source: &#struct_name) -> Self {
+                Self::from(source)
+            }
+
+            pub fn is_empty(&self) -> bool {
+                #(if let Some(_) = &self.#wrapped_field_names { return false; })*
+                #(if self.#unwrapped_field_names != Default::default() { return false; })*
+                true
+            }
+        }
+
+        impl Default for #update_struct_name {
+            fn default() -> Self {
+                Self {
+                    #(#field_names: Default::default(),)*
                 }
             }
         }
-    } else {
-        quote! {
-            #derive_clause
-            pub struct #update_struct_name {
-                #(#updatable_fields,)*
-            }
 
-            impl #update_struct_name {
-                pub fn new(#(#field_names: #field_types),*) -> Self {
-                    Self {
-                        #(#field_names,)*
-                    }
-                }
-
-                pub fn from_source(source: &#struct_name) -> Self {
-                    Self::from(source)
-                }
-
-                pub fn is_empty(&self) -> bool {
-                    #(if let Some(_) = &self.#wrapped_field_names { return false; })*
-                    #(if self.#unwrapped_field_names != Default::default() { return false; })*
-                    true
+        impl From<#struct_name> for #update_struct_name {
+            fn from(source: #struct_name) -> Self {
+                Self {
+                    #(#field_names: Default::default(),)*
                 }
             }
-
-            impl Default for #update_struct_name {
-                fn default() -> Self {
-                    Self {
-                        #(#field_names: Default::default(),)*
-                    }
-                }
-            }
-
-            impl From<#struct_name> for #update_struct_name {
-                fn from(source: #struct_name) -> Self {
-                    Self {
-                        #(#field_names: Default::default(),)*
-                    }
-                }
-            }
-
-            #from_ref_impl
         }
+
+        #from_ref_impl
     };
 
     TokenStream::from(output)
