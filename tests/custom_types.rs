@@ -48,97 +48,9 @@ fn test_custom_type_derivation() {
     assert_eq!(person_update.age, Some(30));
     assert!(person_update.address.is_some());
 }
-
-#[test]
-fn test_custom_type_apply_to() {
-    let source_address = Address {
-        street: "123 Old St".to_string(),
-        city: "Old City".to_string(),
-        zip: "54321".to_string(),
-    };
-
-    let source_person = Person {
-        name: "Alice".to_string(),
-        age: 25,
-        address: source_address.clone(),
-    };
-
-    let address_update = AddressSubstruct::new(
-        Some("456 New St".to_string()),
-        None, // no change
-        Some("67890".to_string()),
-    );
-
-    let person_update = PersonSubstruct::new(
-        Some("Bob".to_string()),
-        None, // no change
-        Some(address_update),
-    );
-
-    let result = person_update.apply_to(&source_person);
-
-    assert_eq!(result.name, "Bob".to_string());
-    assert_eq!(result.age, 25); // unchanged
-    assert_eq!(result.address.street, "456 New St".to_string());
-    assert_eq!(result.address.city, "Old City".to_string()); // unchanged
-    assert_eq!(result.address.zip, "67890".to_string());
-}
-
-#[test]
-fn test_custom_type_would_change() {
-    let source_address = Address {
-        street: "123 Old St".to_string(),
-        city: "Old City".to_string(),
-        zip: "54321".to_string(),
-    };
-
-    let source_person = Person {
-        name: "Alice".to_string(),
-        age: 25,
-        address: source_address.clone(),
-    };
-
-    // Test nested custom type change
-    let address_update = AddressSubstruct::new(Some("456 New St".to_string()), None, None);
-
-    let person_update = PersonSubstruct::new(None, None, Some(address_update));
-
-    assert!(person_update.would_change(&source_person)); // address changed
-
-    // Test no change
-    let no_change_address = AddressSubstruct::new(
-        Some("123 Old St".to_string()), // same value
-        None,
-        None,
-    );
-
-    let no_change_person = PersonSubstruct::new(None, None, Some(no_change_address));
-
-    assert!(!no_change_person.would_change(&source_person)); // no changes
-}
-
 #[test]
 fn test_nested_custom_types() {
-    let source_address = Address {
-        street: "123 Main St".to_string(),
-        city: "Main City".to_string(),
-        zip: "12345".to_string(),
-    };
-
-    let source_person = Person {
-        name: "CEO".to_string(),
-        age: 45,
-        address: source_address.clone(),
-    };
-
-    let source_company = Company {
-        name: "Test Corp".to_string(),
-        ceo: source_person.clone(),
-        address: source_address.clone(),
-        employee_count: 100,
-    };
-
-    // Create updates for nested structures
+    // Test nested substruct creation and field validation
     let address_update = AddressSubstruct::new(
         Some("456 New St".to_string()),
         Some("New City".to_string()),
@@ -153,71 +65,57 @@ fn test_nested_custom_types() {
 
     let company_update = CompanySubstruct::new(
         Some("New Corp".to_string()),
-        Some(person_update),
-        Some(address_update),
+        Some(person_update.clone()),
+        Some(address_update.clone()),
         Some(200),
     );
 
-    let result = company_update.apply_to(&source_company);
+    // Validate company substruct fields
+    assert_eq!(company_update.name, Some("New Corp".to_string()));
+    assert_eq!(company_update.employee_count, Some(200));
+    assert!(company_update.ceo.is_some());
+    assert!(company_update.address.is_some());
 
-    assert_eq!(result.name, "New Corp".to_string());
-    assert_eq!(result.ceo.name, "New CEO".to_string());
-    assert_eq!(result.ceo.age, 50);
-    assert_eq!(result.ceo.address.street, "456 New St".to_string());
-    assert_eq!(result.ceo.address.city, "New City".to_string());
-    assert_eq!(result.ceo.address.zip, "12345".to_string()); // unchanged
-    assert_eq!(result.address.street, "456 New St".to_string());
-    assert_eq!(result.address.city, "New City".to_string());
-    assert_eq!(result.address.zip, "12345".to_string()); // unchanged
-    assert_eq!(result.employee_count, 200);
+    // Validate person substruct fields
+    if let Some(ceo) = &company_update.ceo {
+        assert_eq!(ceo.name, Some("New CEO".to_string()));
+        assert_eq!(ceo.age, Some(50));
+        assert!(ceo.address.is_some());
+    }
+
+    // Validate address substruct fields
+    if let Some(address) = &company_update.address {
+        assert_eq!(address.street, Some("456 New St".to_string()));
+        assert_eq!(address.city, Some("New City".to_string()));
+        assert_eq!(address.zip, None);
+    }
 }
 
 #[test]
 fn test_custom_type_none_update() {
-    let source_address = Address {
-        street: "123 St".to_string(),
-        city: "City".to_string(),
-        zip: "12345".to_string(),
-    };
-
-    let source_person = Person {
-        name: "Alice".to_string(),
-        age: 25,
-        address: source_address.clone(),
-    };
-
+    // Test substruct with some fields set to None
     let person_update = PersonSubstruct::new(
         Some("Bob".to_string()),
         None,
         None, // no address update
     );
 
-    let result = person_update.apply_to(&source_person);
-
-    assert_eq!(result.name, "Bob".to_string());
-    assert_eq!(result.age, 25); // unchanged
-    assert_eq!(result.address, source_address); // unchanged
+    // Validate the fields
+    assert_eq!(person_update.name, Some("Bob".to_string()));
+    assert_eq!(person_update.age, None);
+    assert!(person_update.address.is_none());
 }
 
 #[test]
 fn test_custom_type_empty_update() {
-    let source_address = Address {
-        street: "123 Test St".to_string(),
-        city: "Test City".to_string(),
-        zip: "12345".to_string(),
-    };
-
-    let source_person = Person {
-        name: "Test Person".to_string(),
-        age: 30,
-        address: source_address.clone(),
-    };
-
+    // Test default substruct creation
     let empty_update = PersonSubstruct::default();
 
+    // Validate that it's empty
     assert!(empty_update.is_empty());
-    assert!(!empty_update.would_change(&source_person));
 
-    let result = empty_update.apply_to(&source_person);
-    assert_eq!(result, source_person); // no changes applied
+    // Validate all fields are None
+    assert_eq!(empty_update.name, None);
+    assert_eq!(empty_update.age, None);
+    assert!(empty_update.address.is_none());
 }

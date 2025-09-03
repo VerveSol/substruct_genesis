@@ -252,8 +252,9 @@ pub fn derive_updatable_struct(input: TokenStream) -> TokenStream {
                         }
                     });
                 }
-
-                FieldKind::None => {}
+                FieldKind::None => {
+                    continue;
+                }
             }
         }
     }
@@ -347,17 +348,6 @@ pub fn derive_updatable_struct(input: TokenStream) -> TokenStream {
 
                 pub fn from_source(source: &#struct_name) -> Self {
                     Self::from(source)
-                }
-
-                pub fn apply_to(&self, source: &#struct_name) -> #struct_name {
-                    #struct_name {
-                        #(#apply_lines,)*
-                    }
-                }
-
-                pub fn would_change(&self, source: &#struct_name) -> bool {
-                    #(#change_lines)*
-                    false
                 }
 
                 pub fn is_empty(&self) -> bool {
