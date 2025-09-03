@@ -267,12 +267,4 @@ The macro provides clear error messages for:
 - Minimal memory allocation during updates
 - Smart trait derivation (avoids `Eq` for `f64`, `PartialEq` for `String`)
 
-## Migration from UpdatableStruct
-
-If you're migrating from the old `UpdatableStruct` macro:
-
-1. Replace `UpdatableStruct` with `SubstructBuilder`
-2. Replace `#[redis_updatable(...)]` with `#[substruct_field(...)]`
-3. Update struct names from `StructUpdate` to `StructSubstruct`
-4. Use `#[substruct_builder(name = "...")]` for custom naming
 
