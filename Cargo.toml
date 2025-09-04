@@ -4,7 +4,37 @@ version = "0.1.1"
 edition = "2024"
 description = "Procedural macros for substruct generation"
 authors = ["Verve <sol.verve@protonmail.com>"]
-license = "MIT"
+license-file = "LICENSE.md"
+readme = "README.md"
+repository = "https://github.com/VerveSol/substruct_genesis"
+keywords = [
+    "macro",
+    "procedural-macro",
+    "derive",
+    "builder",
+    "partial-update",
+    "struct",
+    "serde",
+    "json",
+    "api",
+    "database",
+    "substruct",
+    "rust",
+    "redis",
+    "update",
+]
+exclude = [
+    "assets",
+    "tests",
+    "target",
+    "*.md",
+    "!README.md",
+    "!LICENSE.md",
+    ".gitignore",
+    "CONTRIBUTING.md",
+    "GITHUB_RELEASE.md",
+    ".env",
+]
 
 [lib]
 proc-macro = true
