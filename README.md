@@ -6,6 +6,7 @@ A Rust procedural macro that automatically generates independent substruct build
 
 - [Overview](#overview)
 - [Key Features](#key-features)
+- [Code Architecture](#-code-architecture)
 - [Usage](#usage)
   - [Basic Example](#basic-example)
   - [Field Types](#field-types)
@@ -26,6 +27,8 @@ A Rust procedural macro that automatically generates independent substruct build
 
 The `SubstructBuilder` macro generates a substruct for your original struct, containing only the fields you explicitly mark for updates. The generated substruct is completely independent of the original struct, providing a clean separation of concerns for building update operations.
 
+Built with a clean, modular architecture, the macro separates processing logic from code generation, making it maintainable, extensible, and easy to understand.
+
 ## Key Features
 
 - **Independent Substructs**: Generated substructs are completely independent of the original struct
@@ -37,6 +40,37 @@ The `SubstructBuilder` macro generates a substruct for your original struct, con
 - **Custom Struct Names**: Configure the generated substruct name at the struct level
 - **Advanced Nested Naming**: Custom naming for nested types in complex hierarchies
 - **No Dependencies**: Substructs don't reference or depend on the original struct
+
+## 🏗️ Code Architecture
+
+The macro is built with a clean, modular architecture that separates concerns for maintainability and extensibility:
+
+### Module Structure
+
+```
+src/
+├── lib.rs                    # Main macro entry point and orchestration
+├── generator.rs              # Code generation and output formatting
+└── processor/                # Processing logic organized in subfolder
+    ├── mod.rs               # Module declarations and exports
+    ├── attributes.rs        # Attribute parsing utilities
+    └── fields.rs            # Field processing and analysis
+```
+
+### Key Components
+
+- **`lib.rs`** - The main procedural macro entry point that orchestrates the entire process
+- **`generator.rs`** - Handles all code generation logic, including trait derivation, struct definitions, and implementation blocks
+- **`processor/attributes.rs`** - Parses and extracts information from struct-level attributes like `substruct_builder` and `derive`
+- **`processor/fields.rs`** - Processes individual fields, determines their types, and handles the complex logic for different field kinds (primitive, nested, JSON)
+
+### Design Principles
+
+- **Separation of Concerns**: Each module has a single, focused responsibility
+- **Modularity**: Easy to extend with new field types or generation features
+- **Maintainability**: Clear module boundaries make the codebase easy to understand and modify
+- **Testability**: Individual components can be unit tested in isolation
+- **Performance**: Efficient processing with minimal overhead
 
 ## Usage
 
@@ -533,13 +567,11 @@ Each test file follows a consistent pattern:
 - **Clarity**: Test names and assertions clearly indicate what's being tested
 - **Coverage**: Tests cover all major macro features and edge cases
 
-## Future Considerations
-
-### Potential Additions
-- **Performance Tests**: Benchmark macro compilation and runtime performance
-- **Error Case Tests**: Test macro error messages and edge case handling
-- **Integration Tests**: Test with real-world use cases and frameworks
-- **Documentation Tests**: Ensure examples in documentation compile and work
+### Architecture Benefits
+- **Easy Extension**: The modular design allows for simple addition of new features
+- **Maintainable Code**: Clear separation of concerns makes the codebase easy to maintain
+- **Testable Components**: Individual modules can be unit tested in isolation
+- **Scalable Design**: The processor module can be extended with new processing logic
 
 ### Test Maintenance
 - Tests are updated whenever macro behavior changes
