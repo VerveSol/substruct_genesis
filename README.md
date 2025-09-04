@@ -1,12 +1,10 @@
-# Substruct Genesis
-
-A Rust procedural macro that automatically generates independent substruct builders for your data structures, making it easy to create partial update structures with clear semantics.
+![Substruct Genesis](assets/logo.png)
 
 ## 📚 Table of Contents
 
 - [Overview](#overview)
 - [Key Features](#key-features)
-- [Code Architecture](#-code-architecture)
+- [Code Architecture](#code-architecture)
 - [Usage](#usage)
   - [Basic Example](#basic-example)
   - [Field Types](#field-types)
@@ -21,7 +19,6 @@ A Rust procedural macro that automatically generates independent substruct build
   - [Detailed Test Breakdown](#detailed-test-breakdown)
   - [Running Tests](#running-tests)
   - [Test Architecture](#test-architecture)
-- [Future Considerations](#future-considerations)
 
 ## Overview
 
@@ -42,7 +39,7 @@ Built with a clean, modular architecture, the macro separates processing logic f
 - **Utility Methods**: Built-in methods for field counting, clearing, state management, and update operations
 - **No Dependencies**: Substructs don't reference or depend on the original struct
 
-## 🏗️ Code Architecture
+## Code Architecture
 
 The macro is built with a clean, modular architecture that separates concerns for maintainability and extensibility:
 
@@ -100,8 +97,9 @@ struct User {
 ### Field Types
 
 #### Primitive Fields (`#[substruct_field(primitive)]`)
+
 - **Update type**: `Option<T>` (default) or `T` (when `option = false`)
-- **Semantics**: 
+- **Semantics**:
   - `Some(value)` = set to value (when wrapped)
   - `None` = no change (when wrapped)
   - `value` = set to value (when not wrapped)
@@ -118,6 +116,7 @@ struct User {
 ```
 
 #### Option Fields (`#[substruct_field(primitive)]` on `Option<T>`)
+
 - **Update type**: `Option<Option<T>>`
 - **Semantics**:
   - `None` = no change
@@ -139,8 +138,9 @@ let update = ConfigSubstruct::new(
 ```
 
 #### JSON Fields (`#[substruct_field(json)]`)
+
 - **Update type**: `Option<serde_json::Value>`
-- **Semantics**: 
+- **Semantics**:
   - `Some(value)` = set to deserialized value
   - `None` = no change
 
@@ -157,6 +157,7 @@ let update = SettingsSubstruct::new(
 ```
 
 #### Nested Types (`#[substruct_field(nested)]`)
+
 - **Update type**: `Option<TypeSubstruct>`
 - **Semantics**: Recursive updates for nested structs
 
@@ -172,6 +173,7 @@ struct Profile {
 ```
 
 #### Custom Nested Type Names
+
 You can specify custom names for nested types:
 
 ```rust
@@ -186,6 +188,7 @@ struct Profile {
 ```
 
 **Advanced Usage in Complex Hierarchies:**
+
 ```rust
 #[derive(SubstructBuilder)]
 #[substruct_builder(name = "AddressBuilder")]
@@ -207,6 +210,7 @@ struct Person {
 ```
 
 #### Struct-Level Naming
+
 Customize the entire substruct name:
 
 ```rust
@@ -223,15 +227,19 @@ struct User {
 ### Generated Methods
 
 #### `new(...)`
+
 Constructor that takes all updatable fields as parameters.
 
 #### `from_source(source: &T) -> Self`
+
 Creates a substruct from an existing instance (all fields set to no-change).
 
 #### `is_empty(&self) -> bool`
+
 Returns `true` if no fields would be changed by this update.
 
 #### `field_count(&self) -> usize`
+
 Returns the number of fields that have values set (non-default fields).
 
 ```rust
@@ -240,6 +248,7 @@ assert_eq!(update.field_count(), 2); // name and active are set
 ```
 
 #### `clear(&mut self)`
+
 Resets all fields to their default values (None for Option fields, default for unwrapped fields).
 
 ```rust
@@ -252,6 +261,7 @@ assert!(update.is_empty());
 ```
 
 #### `apply_to(&self, target: &mut StructName)`
+
 Applies the updates to a target struct instance. Works with all field types including nested fields (recursive application).
 
 ```rust
@@ -264,6 +274,7 @@ update.apply_to(&mut user);
 ```
 
 **Nested Field Support:**
+
 ```rust
 #[derive(SubstructBuilder)]
 struct Person {
@@ -305,6 +316,7 @@ update.apply_to(&mut person);
 ```
 
 #### `would_change(&self, target: &StructName) -> bool`
+
 Checks if applying this update would modify the target struct. Works with all field types including nested fields (recursive checking).
 
 ```rust
@@ -318,6 +330,7 @@ assert!(!no_change.would_change(&user)); // Would not change anything
 ```
 
 **Nested Field Support:**
+
 ```rust
 let person = Person {
     name: "Alice".to_string(),
@@ -353,6 +366,7 @@ assert!(!no_change_update.would_change(&person)); // Would not change anything
 ```
 
 #### `merge(self, other: Self) -> Self`
+
 Combines two substructs, with the `other` substruct taking precedence for conflicting fields.
 
 ```rust
@@ -364,6 +378,7 @@ let merged = update1.merge(update2);
 ```
 
 #### `has_field(&self, field_name: &str) -> bool`
+
 Checks if a specific field has a value set (non-default value).
 
 ```rust
@@ -375,6 +390,7 @@ assert!(!update.has_field("age"));    // age field doesn't exist in substruct
 ```
 
 #### `into_partial(self) -> HashMap<String, String>`
+
 Converts the substruct into a flexible HashMap representation with string values for easy comparison and inspection.
 
 ```rust
@@ -395,6 +411,7 @@ assert!(!partial.contains_key("age")); // age field doesn't exist in substruct
 ```
 
 **Nested Field Support:**
+
 ```rust
 #[derive(SubstructBuilder)]
 struct Person {
@@ -434,9 +451,11 @@ assert!(address_str.contains("city"));
 ```
 
 #### `Default::default()`
+
 Creates a substruct where all fields indicate "no change".
 
 #### `From<T>` and `From<&T>`
+
 Implementations for creating substructs from owned and borrowed instances.
 
 ## Examples
@@ -569,6 +588,7 @@ let profile_update = ProfileSubstruct::new(Some(address_update));
 ```
 
 **Advanced Nested Naming Example:**
+
 ```rust
 #[derive(SubstructBuilder)]
 #[substruct_builder(name = "AddressBuilder")]
@@ -636,6 +656,7 @@ let update = ConfigSubstruct::new(
 ## Error Handling
 
 The macro provides clear error messages for:
+
 - Invalid attribute syntax
 - Unsupported field types
 - Misuse of `serde_json::Value` with `#[substruct_field(json)]`
@@ -675,6 +696,7 @@ The project includes a comprehensive test suite that validates all macro functio
 Tests the fundamental behavior of the macro with a simple struct containing both marked and unmarked fields.
 
 **Test Cases:**
+
 - **`test_basic_struct_derivation`**: Validates substruct creation with only marked fields
 - **`test_basic_struct_default`**: Tests default substruct creation
 - **`test_basic_struct_from_source`**: Tests creating substruct from source struct
@@ -689,6 +711,7 @@ Tests the fundamental behavior of the macro with a simple struct containing both
 - **`test_basic_struct_into_partial`**: Tests conversion to flexible HashMap representation
 
 **Key Validation:**
+
 - Fields without `#[substruct_field]` are completely excluded
 - Only `name` and `active` fields appear in the substruct
 - `age` field is absent from all substruct operations
@@ -700,12 +723,14 @@ Tests the fundamental behavior of the macro with a simple struct containing both
 Comprehensive tests for all field types: primitive, JSON, and nested.
 
 **Test Cases:**
+
 - **Primitive Fields**: Basic primitive field substruct creation and validation
 - **JSON Fields**: JSON field serialization, mixed field types, and nested context
 - **Nested Types**: Basic nested struct creation and source conversion
 - **Nested Field Operations**: Recursive `apply_to()`, `would_change()`, and `into_partial()` functionality for nested structs
 
 **Key Validation:**
+
 - Primitive fields are wrapped in `Option<T>` by default
 - JSON fields are properly typed as `Option<serde_json::Value>`
 - Nested structs are generated with correct field types
@@ -718,12 +743,14 @@ Comprehensive tests for all field types: primitive, JSON, and nested.
 Tests all configuration options: attributes, wrapping, naming, and debug.
 
 **Test Cases:**
+
 - **Debug and Wrapping**: Debug attribute with wrapped fields
 - **Simple Nesting**: Basic nested struct scenarios
 - **Custom Naming**: Struct-level naming functionality
 - **Wrap Attributes**: Field wrapping configuration and parsing
 
 **Key Validation:**
+
 - Debug attributes work with wrapped fields
 - Custom names are applied correctly
 - Wrap attributes are parsed correctly
@@ -734,12 +761,14 @@ Tests all configuration options: attributes, wrapping, naming, and debug.
 Tests complex nested types, custom types, and edge cases with advanced naming features.
 
 **Test Cases:**
+
 - **Complex Custom Types**: Deep nesting with company → person → address using custom nested type names
 - **Custom Nested Naming**: `AddressBuilder` custom naming for nested structs
 - **Edge Cases**: Empty structs, single field structs, and boundary conditions
 - **Advanced Scenarios**: Partial updates, None values, and empty states
 
 **Key Validation:**
+
 - Complex field hierarchies work properly with custom naming
 - Custom nested type names are applied correctly (`AddressBuilder` instead of `AddressSubstruct`)
 - Edge cases are handled gracefully
@@ -751,10 +780,12 @@ Tests complex nested types, custom types, and edge cases with advanced naming fe
 Tests how multiple features work together in complex scenarios.
 
 **Test Cases:**
+
 - **Complex Integration**: Custom naming, mixed field types, nesting, and wrapping
 - **Mixed Operations**: Default creation, partial updates, and source conversion
 
 **Key Validation:**
+
 - All features work together seamlessly
 - Complex integrations handle multiple field types
 - Mixed operations work correctly
@@ -765,12 +796,14 @@ Tests how multiple features work together in complex scenarios.
 Comprehensive tests for macro compilation, validation, and edge case handling.
 
 **Test Cases:**
+
 - **Field Type Validation**: Mixed field types, complex nesting, and attribute combinations
 - **Trait Implementation**: Clone, Debug, PartialEq, Default, and From traits
 - **Serialization**: JSON serialization and deserialization validation
 - **Edge Cases**: Single fields and complex scenarios
 
 **Key Validation:**
+
 - Macro handles all field types correctly
 - Generated structs implement required traits
 - Serialization works with edge case values
@@ -781,6 +814,7 @@ Comprehensive tests for macro compilation, validation, and edge case handling.
 Tests common patterns used in production applications.
 
 **Test Cases:**
+
 - **API Update Patterns**: User profile updates and nested structure modifications
 - **Database Patterns**: Record updates, soft deletes, and version management
 - **Configuration Management**: App settings and partial configuration updates
@@ -788,6 +822,7 @@ Tests common patterns used in production applications.
 - **Workflow Patterns**: Step status updates and process management
 
 **Key Validation:**
+
 - Common update patterns work correctly
 - Partial updates handle field exclusion properly
 - Nested updates maintain data integrity
@@ -798,6 +833,7 @@ Tests common patterns used in production applications.
 Tests extreme scenarios and boundary conditions to ensure robustness.
 
 **Test Cases:**
+
 - **Minimal Structs**: Single fields and complex field types
 - **Field Type Edge Cases**: Arrays, tuples, chars, bytes, and complex types
 - **Deep Nesting**: Multi-level nested structures (4+ levels deep)
@@ -806,6 +842,7 @@ Tests extreme scenarios and boundary conditions to ensure robustness.
 - **Boundary Conditions**: Min/max values and extreme numeric ranges
 
 **Key Validation:**
+
 - Extreme scenarios are handled gracefully
 - Deep nesting works correctly
 - Custom naming handles edge cases
@@ -815,6 +852,7 @@ Tests extreme scenarios and boundary conditions to ensure robustness.
 ### Running Tests
 
 #### Individual Test Files
+
 ```bash
 cargo test --test basic_functionality
 cargo test --test field_types
@@ -827,11 +865,13 @@ cargo test --test edge_cases
 ```
 
 #### All Tests
+
 ```bash
 cargo test
 ```
 
 #### Test with Output
+
 ```bash
 cargo test -- --nocapture
 ```
@@ -840,6 +880,7 @@ cargo test -- --nocapture
 
 **Test Structure:**
 Each test file follows a consistent pattern:
+
 1. **Struct Definition**: Defines test structs with various field types and attributes
 2. **Substruct Generation**: Tests that substructs are generated correctly
 3. **Field Validation**: Validates that fields have correct types and values
@@ -847,18 +888,21 @@ Each test file follows a consistent pattern:
 5. **Edge Case Handling**: Tests boundary conditions and error cases
 
 **Key Testing Principles:**
+
 - **Independence**: Tests don't depend on external state
 - **Completeness**: Each test validates a specific aspect of functionality
 - **Clarity**: Test names and assertions clearly indicate what's being tested
 - **Coverage**: Tests cover all major macro features and edge case\
 
 ### Architecture Benefits
+
 - **Easy Extension**: The modular design allows for simple addition of new features
 - **Maintainable Code**: Clear separation of concerns makes the codebase easy to maintain
 - **Testable Components**: Individual modules can be unit tested in isolation
 - **Scalable Design**: The processor module can be extended with new processing logic
 
 ### Test Maintenance
+
 - Tests are updated whenever macro behavior changes
 - New features require corresponding test coverage
 - Edge cases are added as they're discovered
@@ -871,6 +915,7 @@ Each test file follows a consistent pattern:
 The Substruct Genesis macro provides a clean, efficient way to generate independent substruct builders for your Rust data structures. With comprehensive test coverage and clear documentation, the project ensures reliability and ease of use.
 
 **Key Benefits:**
+
 1. **Field exclusion works correctly** - unmarked fields are completely absent
 2. **Substructs are independent** - no dependencies on original structs
 3. **All field types are supported** - primitive, JSON, nested, and custom types
@@ -878,5 +923,3 @@ The Substruct Genesis macro provides a clean, efficient way to generate independ
 5. **Edge cases are handled** - empty structs, single fields, complex nesting
 
 The test suite serves as both validation of current functionality and documentation of expected behavior, ensuring the macro remains reliable and well-tested as it evolves. With 58 comprehensive tests covering all aspects of the macro's functionality, the project maintains high quality and reliability standards.
-
-

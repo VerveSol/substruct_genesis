@@ -13,7 +13,6 @@ Thank you for your interest in contributing to `substruct-genesis`! This documen
 - [Development Workflow](#development-workflow)
 - [Testing](#testing)
 - [Documentation](#documentation)
-- [Release Process](#release-process)
 
 ## Code of Conduct
 
@@ -32,11 +31,14 @@ This project adheres to the [Rust Code of Conduct](https://www.rust-lang.org/pol
 
 1. Fork the repository on GitHub
 2. Clone your fork locally:
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/substruct_genesis.git
    cd substruct_genesis
    ```
+
 3. Add the upstream repository:
+
    ```bash
    git remote add upstream https://github.com/VerveSol/substruct_genesis.git
    ```
@@ -91,28 +93,33 @@ cargo test --test complex_scenarios
 We welcome several types of contributions:
 
 #### **Bug Fixes**
+
 - Fix issues reported in GitHub issues
 - Ensure all existing tests pass
 - Add tests for the bug fix if applicable
 
 #### **New Features**
+
 - Implement new field types or attributes
 - Add new utility methods to generated substructs
 - Enhance error messages and diagnostics
 
 #### **Documentation**
+
 - Improve README.md
 - Add code examples
 - Enhance inline documentation
 - Write tutorials or guides
 
 #### **Testing**
+
 - Add test cases for edge cases
 - Improve test coverage
 - Add integration tests
 - Performance benchmarks
 
 #### **Infrastructure**
+
 - CI/CD improvements
 - Build system enhancements
 - Dependency updates
@@ -120,21 +127,25 @@ We welcome several types of contributions:
 ### Code Style
 
 #### **Rust Formatting**
+
 - Use `cargo fmt` to format code
 - Follow standard Rust conventions
 - Use meaningful variable and function names
 
 #### **Documentation**
+
 - Document all public APIs with `///` comments
 - Include examples in documentation
 - Use `rust,ignore` for doctests that can't compile standalone
 
 #### **Error Handling**
+
 - Use `proc_macro_error` for user-friendly error messages
 - Provide clear error context
 - Include suggestions for fixes when possible
 
 #### **Testing**
+
 - Write tests for all new functionality
 - Use descriptive test names
 - Group related tests logically
@@ -173,6 +184,7 @@ git commit -m "Add support for custom field types
 ```
 
 **Commit Message Format:**
+
 - Use imperative mood ("Add feature" not "Added feature")
 - First line should be 50 characters or less
 - Include issue number if applicable
@@ -186,6 +198,7 @@ git push origin feature/your-feature-name
 ```
 
 Then create a Pull Request on GitHub with:
+
 - **Clear title** describing the change
 - **Detailed description** of what was changed and why
 - **Reference to related issues** using "Fixes #123" or "Closes #123"
@@ -209,6 +222,7 @@ Then create a Pull Request on GitHub with:
 ### Creating a Good Issue
 
 #### **Bug Reports**
+
 ```markdown
 **Describe the bug**
 A clear description of what the bug is.
@@ -229,12 +243,14 @@ What you expected to happen.
 ```
 
 **Environment:**
+
 - OS: [e.g. macOS, Linux, Windows]
 - Rust version: [e.g. 1.85.0]
 - substruct-genesis version: [e.g. 0.1.0]
 
 **Additional context**
 Any other context about the problem.
+
 ```
 
 #### **Feature Requests**
@@ -273,22 +289,26 @@ substruct_genesis/
 ### **Key Components**
 
 #### **lib.rs**
+
 - Main procedural macro entry point
 - Orchestrates the code generation process
 - Handles error reporting
 
 #### **generator.rs**
+
 - Generates the final Rust code
 - Implements all utility methods
 - Handles trait implementations
 
 #### **processor/**
+
 - **attributes.rs**: Parses struct and field attributes
 - **fields.rs**: Processes individual fields and determines types
 
 ### **Adding New Features**
 
 #### **New Field Types**
+
 1. Add field type to `FieldKind` enum in `processor/fields.rs`
 2. Implement handling in `handle_field` function
 3. Add code generation in `generator.rs`
@@ -296,6 +316,7 @@ substruct_genesis/
 5. Update documentation
 
 #### **New Utility Methods**
+
 1. Add method implementation in `generator.rs`
 2. Add comprehensive tests
 3. Update documentation with examples
@@ -319,6 +340,7 @@ The project has 8 test files covering different aspects:
 ### **Writing Tests**
 
 #### **Test Naming Convention**
+
 ```rust
 #[test]
 fn test_feature_description() {
@@ -327,6 +349,7 @@ fn test_feature_description() {
 ```
 
 #### **Test Structure**
+
 ```rust
 #[test]
 fn test_new_feature() {
@@ -343,6 +366,7 @@ fn test_new_feature() {
 ```
 
 #### **Running Tests**
+
 ```bash
 # Run all tests
 cargo test
@@ -365,6 +389,7 @@ cargo test --release
 ### **Documentation Standards**
 
 #### **Inline Documentation**
+
 ```rust
 /// Creates a new substruct with the specified field values.
 ///
@@ -387,6 +412,7 @@ pub fn new(field1: Option<String>, field2: Option<bool>) -> Self {
 ```
 
 #### **README Updates**
+
 - Update examples when adding new features
 - Add new sections for new functionality
 - Keep the quick start example current
