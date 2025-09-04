@@ -130,6 +130,8 @@ pub fn generate_struct_impl(
             pub fn is_empty(&self) -> bool {
                 #(if let Some(_) = &self.#wrapped_field_names { return false; })*
                 #(if self.#unwrapped_field_names != Default::default() { return false; })*
+                #(if let Some(_) = &self.#json_field_names { return false; })*
+                #(if let Some(_) = &self.#nested_field_names { return false; })*
                 true
             }
 
@@ -178,8 +180,8 @@ pub fn generate_struct_impl(
                     return true;
                 })*
                 #(if let Some(value) = &self.#json_field_names {
-                    let original = serde_json::to_value(&target.#json_field_names).expect("Failed to serialize to JSON");
-                    if *value != original {
+                    let original: serde_json::Value = serde_json::to_value(&target.#json_field_names).expect("Failed to serialize to JSON");
+                    if !serde_json::Value::eq(value, &original) {
                         return true;
                     }
                 })*
@@ -215,6 +217,32 @@ pub fn generate_struct_impl(
                     #(stringify!(#nested_field_names) => self.#nested_field_names.is_some(),)*
                     _ => false,
                 }
+            }
+
+            pub fn into_partial(self) -> std::collections::HashMap<String, String> {
+                let mut partial = std::collections::HashMap::new();
+
+                // Add wrapped fields
+                #(if let Some(value) = self.#wrapped_field_names {
+                    partial.insert(stringify!(#wrapped_field_names).to_string(), format!("{:?}", value));
+                })*
+
+                // Add unwrapped fields (only if not default)
+                #(if self.#unwrapped_field_names != Default::default() {
+                    partial.insert(stringify!(#unwrapped_field_names).to_string(), format!("{:?}", &self.#unwrapped_field_names));
+                })*
+
+                // Add JSON fields
+                #(if let Some(value) = self.#json_field_names {
+                    partial.insert(stringify!(#json_field_names).to_string(), value.to_string());
+                })*
+
+                // Add nested fields (convert to partial recursively)
+                #(if let Some(nested) = self.#nested_field_names {
+                    partial.insert(stringify!(#nested_field_names).to_string(), format!("{:?}", nested.into_partial()));
+                })*
+
+                partial
             }
         }
     }

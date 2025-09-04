@@ -142,3 +142,26 @@ fn test_basic_struct_has_field() {
     assert!(update.has_field("name"));
     assert!(!update.has_field("active"));
 }
+
+#[test]
+fn test_basic_struct_into_partial() {
+    let update = BasicStructSubstruct::new(Some("Alice".to_string()), Some(true));
+
+    let partial = update.into_partial();
+
+    // Should contain the fields that were set
+    assert!(partial.contains_key("name"));
+    assert!(partial.contains_key("active"));
+
+    // Should not contain fields that weren't set
+    assert!(!partial.contains_key("age")); // age field doesn't exist in substruct
+
+    // Check the values (now as string representations)
+    assert_eq!(partial.get("name"), Some(&"\"Alice\"".to_string()));
+    assert_eq!(partial.get("active"), Some(&"true".to_string()));
+
+    // Test with empty update
+    let empty_update = BasicStructSubstruct::default();
+    let empty_partial = empty_update.into_partial();
+    assert!(empty_partial.is_empty());
+}

@@ -374,6 +374,65 @@ assert!(!update.has_field("active")); // active is not set
 assert!(!update.has_field("age"));    // age field doesn't exist in substruct
 ```
 
+#### `into_partial(self) -> HashMap<String, String>`
+Converts the substruct into a flexible HashMap representation with string values for easy comparison and inspection.
+
+```rust
+let update = UserSubstruct::new(Some("Alice".to_string()), Some(true));
+
+let partial = update.into_partial();
+
+// Check that fields are present
+assert!(partial.contains_key("name"));
+assert!(partial.contains_key("active"));
+
+// Compare actual values (as string representations)
+assert_eq!(partial.get("name"), Some(&"\"Alice\"".to_string()));
+assert_eq!(partial.get("active"), Some(&"true".to_string()));
+
+// Fields that aren't set are not included
+assert!(!partial.contains_key("age")); // age field doesn't exist in substruct
+```
+
+**Nested Field Support:**
+```rust
+#[derive(SubstructBuilder)]
+struct Person {
+    #[substruct_field(primitive)]
+    name: String,
+    #[substruct_field(nested)]
+    address: Address,
+}
+
+#[derive(SubstructBuilder)]
+struct Address {
+    #[substruct_field(primitive)]
+    street: String,
+    #[substruct_field(primitive)]
+    city: String,
+}
+
+let address_update = AddressSubstruct::new(
+    Some("123 New St".to_string()),
+    Some("New City".to_string()),
+);
+let update = PersonSubstruct::new(
+    Some("Bob".to_string()),
+    Some(address_update),
+);
+
+let partial = update.into_partial();
+
+// Top-level field
+assert_eq!(partial.get("name"), Some(&"\"Bob\"".to_string()));
+
+// Nested field (recursively converted)
+assert!(partial.contains_key("address"));
+let address_str = partial.get("address").unwrap();
+assert!(address_str.contains("street"));
+assert!(address_str.contains("city"));
+```
+
 #### `Default::default()`
 Creates a substruct where all fields indicate "no change".
 
@@ -475,6 +534,12 @@ let theme_update = UserSettingsSubstruct::new(Some("dark".to_string()), None, 0)
 let notification_update = UserSettingsSubstruct::new(None, Some(true), 0);
 let combined = theme_update.merge(notification_update);
 // combined has theme: Some("dark") and notifications: Some(true)
+
+// Convert to partial representation for flexible handling
+let partial = combined.into_partial();
+assert_eq!(partial.get("theme"), Some(&"\"dark\"".to_string()));
+assert_eq!(partial.get("notifications"), Some(&"true".to_string()));
+assert_eq!(partial.get("version"), Some(&"0".to_string()));
 ```
 
 ### Nested Structs with Custom Names
@@ -592,8 +657,8 @@ The project includes a comprehensive test suite that validates all macro functio
 
 | Test File | Tests | Status | Purpose |
 |-----------|-------|--------|---------|
-| `basic_functionality.rs` | 11 | ✅ All Passing | Core macro functionality, field exclusion, and utility methods |
-| `field_types.rs` | 9 | ✅ All Passing | Primitive, JSON, and nested field handling |
+| `basic_functionality.rs` | 12 | ✅ All Passing | Core macro functionality, field exclusion, and utility methods |
+| `field_types.rs` | 10 | ✅ All Passing | Primitive, JSON, and nested field handling |
 | `configuration.rs` | 4 | ✅ All Passing | Attributes, wrapping, naming, and debug |
 | `complex_scenarios.rs` | 5 | ✅ All Passing | Complex nested types and edge cases |
 | `integration.rs` | 2 | ✅ All Passing | Multiple features working together |
@@ -601,7 +666,7 @@ The project includes a comprehensive test suite that validates all macro functio
 | `real_world.rs` | 9 | ✅ All Passing | API, database, and e-commerce patterns |
 | `edge_cases.rs` | 9 | ✅ All Passing | Boundary conditions and edge cases |
 
-**Total: 56 tests, all passing** ✅
+**Total: 58 tests, all passing** ✅
 
 ### Detailed Test Breakdown
 
@@ -621,6 +686,7 @@ Tests the fundamental behavior of the macro with a simple struct containing both
 - **`test_basic_struct_would_change`**: Tests change detection functionality
 - **`test_basic_struct_merge`**: Tests merging two substructs
 - **`test_basic_struct_has_field`**: Tests field presence checking
+- **`test_basic_struct_into_partial`**: Tests conversion to flexible HashMap representation
 
 **Key Validation:**
 - Fields without `#[substruct_field]` are completely excluded
@@ -637,7 +703,7 @@ Comprehensive tests for all field types: primitive, JSON, and nested.
 - **Primitive Fields**: Basic primitive field substruct creation and validation
 - **JSON Fields**: JSON field serialization, mixed field types, and nested context
 - **Nested Types**: Basic nested struct creation and source conversion
-- **Nested Field Operations**: Recursive `apply_to()` and `would_change()` functionality for nested structs
+- **Nested Field Operations**: Recursive `apply_to()`, `would_change()`, and `into_partial()` functionality for nested structs
 
 **Key Validation:**
 - Primitive fields are wrapped in `Option<T>` by default
@@ -645,6 +711,7 @@ Comprehensive tests for all field types: primitive, JSON, and nested.
 - Nested structs are generated with correct field types
 - Mixed field types work together seamlessly
 - Nested field operations work recursively for any depth of nesting
+- `into_partial()` method provides flexible HashMap representation with comparable string values
 
 #### 3. `configuration.rs` - Configuration and Attributes
 
@@ -810,6 +877,6 @@ The Substruct Genesis macro provides a clean, efficient way to generate independ
 4. **Configuration options work** - wrapping, naming, and attribute parsing
 5. **Edge cases are handled** - empty structs, single fields, complex nesting
 
-The test suite serves as both validation of current functionality and documentation of expected behavior, ensuring the macro remains reliable and well-tested as it evolves. With 56 comprehensive tests covering all aspects of the macro's functionality, the project maintains high quality and reliability standards.
+The test suite serves as both validation of current functionality and documentation of expected behavior, ensuring the macro remains reliable and well-tested as it evolves. With 58 comprehensive tests covering all aspects of the macro's functionality, the project maintains high quality and reliability standards.
 
 

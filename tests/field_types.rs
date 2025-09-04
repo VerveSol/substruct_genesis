@@ -207,3 +207,25 @@ fn test_nested_struct_would_change() {
     // Should not detect changes
     assert!(!no_change_update.would_change(&target));
 }
+
+#[test]
+fn test_nested_struct_into_partial() {
+    let address_update =
+        AddressSubstruct::new(Some("123 New St".to_string()), Some("New City".to_string()));
+    let update = NestedStructSubstruct::new(Some("Bob".to_string()), Some(address_update));
+
+    let partial = update.into_partial();
+
+    // Should contain the top-level field
+    assert!(partial.contains_key("name"));
+    assert_eq!(partial.get("name"), Some(&"\"Bob\"".to_string()));
+
+    // Should contain the nested field
+    assert!(partial.contains_key("address"));
+
+    // The nested field should be a string representation of the HashMap
+    assert!(partial.get("address").is_some());
+    let address_str = partial.get("address").unwrap();
+    assert!(address_str.contains("street"));
+    assert!(address_str.contains("city"));
+}
