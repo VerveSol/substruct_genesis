@@ -39,6 +39,7 @@ Built with a clean, modular architecture, the macro separates processing logic f
 - **Nested Types**: Support nested substruct builders with custom naming
 - **Custom Struct Names**: Configure the generated substruct name at the struct level
 - **Advanced Nested Naming**: Custom naming for nested types in complex hierarchies
+- **Utility Methods**: Built-in methods for field counting, clearing, state management, and update operations
 - **No Dependencies**: Substructs don't reference or depend on the original struct
 
 ## 🏗️ Code Architecture
@@ -230,6 +231,149 @@ Creates a substruct from an existing instance (all fields set to no-change).
 #### `is_empty(&self) -> bool`
 Returns `true` if no fields would be changed by this update.
 
+#### `field_count(&self) -> usize`
+Returns the number of fields that have values set (non-default fields).
+
+```rust
+let update = UserSubstruct::new(Some("John".to_string()), None, Some(true));
+assert_eq!(update.field_count(), 2); // name and active are set
+```
+
+#### `clear(&mut self)`
+Resets all fields to their default values (None for Option fields, default for unwrapped fields).
+
+```rust
+let mut update = UserSubstruct::new(Some("John".to_string()), Some(true));
+assert_eq!(update.field_count(), 2);
+
+update.clear();
+assert_eq!(update.field_count(), 0);
+assert!(update.is_empty());
+```
+
+#### `apply_to(&self, target: &mut StructName)`
+Applies the updates to a target struct instance. Works with all field types including nested fields (recursive application).
+
+```rust
+let mut user = User::new("Alice".to_string(), false, 25);
+let update = UserSubstruct::new(Some("Bob".to_string()), Some(true));
+
+update.apply_to(&mut user);
+// user.name is now "Bob", user.active is now true
+// user.age remains unchanged (25)
+```
+
+**Nested Field Support:**
+```rust
+#[derive(SubstructBuilder)]
+struct Person {
+    #[substruct_field(primitive)]
+    name: String,
+    #[substruct_field(nested)]
+    address: Address,
+}
+
+#[derive(SubstructBuilder)]
+struct Address {
+    #[substruct_field(primitive)]
+    street: String,
+    #[substruct_field(primitive)]
+    city: String,
+}
+
+let mut person = Person {
+    name: "Alice".to_string(),
+    address: Address {
+        street: "Old Street".to_string(),
+        city: "Old City".to_string(),
+    },
+};
+
+let address_update = AddressSubstruct::new(
+    Some("123 New St".to_string()),
+    Some("New City".to_string()),
+);
+let update = PersonSubstruct::new(
+    Some("Bob".to_string()),
+    Some(address_update),
+);
+
+update.apply_to(&mut person);
+// person.name is now "Bob"
+// person.address.street is now "123 New St"
+// person.address.city is now "New City"
+```
+
+#### `would_change(&self, target: &StructName) -> bool`
+Checks if applying this update would modify the target struct. Works with all field types including nested fields (recursive checking).
+
+```rust
+let user = User::new("Alice".to_string(), false, 25);
+let update = UserSubstruct::new(Some("Bob".to_string()), Some(true));
+
+assert!(update.would_change(&user)); // Would change name and active
+
+let no_change = UserSubstruct::new(Some("Alice".to_string()), Some(false));
+assert!(!no_change.would_change(&user)); // Would not change anything
+```
+
+**Nested Field Support:**
+```rust
+let person = Person {
+    name: "Alice".to_string(),
+    address: Address {
+        street: "Old Street".to_string(),
+        city: "Old City".to_string(),
+    },
+};
+
+// Update that would change the target
+let address_update = AddressSubstruct::new(
+    Some("123 New St".to_string()),
+    Some("New City".to_string()),
+);
+let update = PersonSubstruct::new(
+    Some("Bob".to_string()),
+    Some(address_update),
+);
+
+assert!(update.would_change(&person)); // Would change both name and address
+
+// Update that wouldn't change the target
+let no_change_address = AddressSubstruct::new(
+    Some("Old Street".to_string()),
+    Some("Old City".to_string()),
+);
+let no_change_update = PersonSubstruct::new(
+    Some("Alice".to_string()),
+    Some(no_change_address),
+);
+
+assert!(!no_change_update.would_change(&person)); // Would not change anything
+```
+
+#### `merge(self, other: Self) -> Self`
+Combines two substructs, with the `other` substruct taking precedence for conflicting fields.
+
+```rust
+let update1 = UserSubstruct::new(Some("Alice".to_string()), None);
+let update2 = UserSubstruct::new(None, Some(true));
+
+let merged = update1.merge(update2);
+// merged has name: Some("Alice") and active: Some(true)
+```
+
+#### `has_field(&self, field_name: &str) -> bool`
+Checks if a specific field has a value set (non-default value).
+
+```rust
+let update = UserSubstruct::new(Some("Alice".to_string()), None);
+
+assert!(update.has_field("name"));    // name is set
+assert!(!update.has_field("active")); // active is not set
+assert!(!update.has_field("age"));    // age field doesn't exist in substruct
+```
+
 #### `Default::default()`
 Creates a substruct where all fields indicate "no change".
 
@@ -266,7 +410,71 @@ let update = UserProfileSubstruct::new(
 );
 
 // The substruct is completely independent
-// No apply_to or would_change methods exist
+// Now includes utility methods for update operations
+```
+
+### Utility Methods Example
+
+```rust
+use serde::{Deserialize, Serialize};
+use substruct_genesis::SubstructBuilder;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SubstructBuilder)]
+struct UserSettings {
+    #[substruct_field(primitive)]
+    theme: String,
+    #[substruct_field(primitive)]
+    notifications: bool,
+    #[substruct_field(primitive, option = false)]
+    version: u32,
+}
+
+// Create a partial update
+let mut update = UserSettingsSubstruct::new(
+    Some("dark".to_string()),
+    Some(true),
+    2,
+);
+
+// Check how many fields are being updated
+assert_eq!(update.field_count(), 3);
+
+// Check if the update is empty
+assert!(!update.is_empty());
+
+// Clear all fields to reset
+update.clear();
+assert_eq!(update.field_count(), 0);
+assert!(update.is_empty());
+
+// Create a minimal update
+let minimal_update = UserSettingsSubstruct::new(
+    Some("light".to_string()),
+    None,  // no change to notifications
+    0,     // version is unwrapped, so 0 means "set to 0"
+);
+assert_eq!(minimal_update.field_count(), 2);
+
+// Check if specific fields are set
+assert!(minimal_update.has_field("theme"));
+assert!(!minimal_update.has_field("notifications"));
+assert!(minimal_update.has_field("version"));
+
+// Apply updates to a target struct
+let mut settings = UserSettings::new("dark".to_string(), false, 1);
+minimal_update.apply_to(&mut settings);
+// settings.theme is now "light", settings.version is now 0
+// settings.notifications remains false (unchanged)
+
+// Check if updates would change a target
+let other_settings = UserSettings::new("light".to_string(), false, 0);
+assert!(!minimal_update.would_change(&other_settings)); // No changes needed
+
+// Merge two updates
+let theme_update = UserSettingsSubstruct::new(Some("dark".to_string()), None, 0);
+let notification_update = UserSettingsSubstruct::new(None, Some(true), 0);
+let combined = theme_update.merge(notification_update);
+// combined has theme: Some("dark") and notifications: Some(true)
 ```
 
 ### Nested Structs with Custom Names
@@ -350,7 +558,7 @@ let update = ConfigSubstruct::new(
 
 - **Field Exclusion**: Fields without `#[substruct_field]` attributes are completely excluded from the generated substruct
 - **Independent Substructs**: The generated substruct has no dependencies on the original struct
-- **No Update Methods**: The substruct is designed for building update data, not applying it to the original struct
+- **Update Methods**: The substruct includes utility methods for applying updates and checking changes
 - **Clean Separation**: Perfect for API endpoints, configuration updates, and other scenarios where you want to separate update data from the target structure
 - **Validation**: The macro now requires at least one field to be tagged with `#[substruct_field]` - empty structs or structs with no tagged fields will cause compilation errors
 
@@ -384,8 +592,8 @@ The project includes a comprehensive test suite that validates all macro functio
 
 | Test File | Tests | Status | Purpose |
 |-----------|-------|--------|---------|
-| `basic_functionality.rs` | 5 | ✅ All Passing | Core macro functionality and field exclusion |
-| `field_types.rs` | 7 | ✅ All Passing | Primitive, JSON, and nested field handling |
+| `basic_functionality.rs` | 11 | ✅ All Passing | Core macro functionality, field exclusion, and utility methods |
+| `field_types.rs` | 9 | ✅ All Passing | Primitive, JSON, and nested field handling |
 | `configuration.rs` | 4 | ✅ All Passing | Attributes, wrapping, naming, and debug |
 | `complex_scenarios.rs` | 5 | ✅ All Passing | Complex nested types and edge cases |
 | `integration.rs` | 2 | ✅ All Passing | Multiple features working together |
@@ -393,7 +601,7 @@ The project includes a comprehensive test suite that validates all macro functio
 | `real_world.rs` | 9 | ✅ All Passing | API, database, and e-commerce patterns |
 | `edge_cases.rs` | 9 | ✅ All Passing | Boundary conditions and edge cases |
 
-**Total: 48 tests, all passing** ✅
+**Total: 56 tests, all passing** ✅
 
 ### Detailed Test Breakdown
 
@@ -407,11 +615,19 @@ Tests the fundamental behavior of the macro with a simple struct containing both
 - **`test_basic_struct_from_source`**: Tests creating substruct from source struct
 - **`test_basic_struct_is_empty`**: Validates empty state detection
 - **`test_basic_struct_from_owned`**: Tests owned source conversion
+- **`test_basic_struct_field_count`**: Tests field counting functionality
+- **`test_basic_struct_clear`**: Tests field clearing functionality
+- **`test_basic_struct_apply_to`**: Tests applying updates to target struct
+- **`test_basic_struct_would_change`**: Tests change detection functionality
+- **`test_basic_struct_merge`**: Tests merging two substructs
+- **`test_basic_struct_has_field`**: Tests field presence checking
 
 **Key Validation:**
 - Fields without `#[substruct_field]` are completely excluded
 - Only `name` and `active` fields appear in the substruct
 - `age` field is absent from all substruct operations
+- All utility methods work correctly with the generated substruct
+- Update operations only affect marked fields
 
 #### 2. `field_types.rs` - Field Type Handling
 
@@ -421,12 +637,14 @@ Comprehensive tests for all field types: primitive, JSON, and nested.
 - **Primitive Fields**: Basic primitive field substruct creation and validation
 - **JSON Fields**: JSON field serialization, mixed field types, and nested context
 - **Nested Types**: Basic nested struct creation and source conversion
+- **Nested Field Operations**: Recursive `apply_to()` and `would_change()` functionality for nested structs
 
 **Key Validation:**
 - Primitive fields are wrapped in `Option<T>` by default
 - JSON fields are properly typed as `Option<serde_json::Value>`
 - Nested structs are generated with correct field types
 - Mixed field types work together seamlessly
+- Nested field operations work recursively for any depth of nesting
 
 #### 3. `configuration.rs` - Configuration and Attributes
 
@@ -592,6 +810,6 @@ The Substruct Genesis macro provides a clean, efficient way to generate independ
 4. **Configuration options work** - wrapping, naming, and attribute parsing
 5. **Edge cases are handled** - empty structs, single fields, complex nesting
 
-The test suite serves as both validation of current functionality and documentation of expected behavior, ensuring the macro remains reliable and well-tested as it evolves. With 48 comprehensive tests covering all aspects of the macro's functionality, the project maintains high quality and reliability standards.
+The test suite serves as both validation of current functionality and documentation of expected behavior, ensuring the macro remains reliable and well-tested as it evolves. With 56 comprehensive tests covering all aspects of the macro's functionality, the project maintains high quality and reliability standards.
 
 

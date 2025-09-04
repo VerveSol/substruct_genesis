@@ -19,13 +19,12 @@ pub struct FieldContext {
     pub updatable_fields: Vec<proc_macro2::TokenStream>,
     pub field_names: Vec<Ident>,
     pub field_types: Vec<proc_macro2::TokenStream>,
-    pub apply_lines: Vec<proc_macro2::TokenStream>,
-    pub change_lines: Vec<proc_macro2::TokenStream>,
     pub contains_f64: bool,
     pub contains_string: bool,
     pub json_field_names: Vec<Ident>,
     pub unwrapped_field_names: Vec<Ident>,
     pub wrapped_field_names: Vec<Ident>,
+    pub nested_field_names: Vec<Ident>,
 }
 
 impl FieldContext {
@@ -34,13 +33,12 @@ impl FieldContext {
             updatable_fields: Vec::new(),
             field_names: Vec::new(),
             field_types: Vec::new(),
-            apply_lines: Vec::new(),
-            change_lines: Vec::new(),
             contains_f64: false,
             contains_string: false,
             json_field_names: Vec::new(),
             unwrapped_field_names: Vec::new(),
             wrapped_field_names: Vec::new(),
+            nested_field_names: Vec::new(),
         }
     }
 }
@@ -114,57 +112,6 @@ pub fn handle_primitive_field(
     } else {
         context.wrapped_field_names.push(ident.clone());
     }
-
-    let apply_line = if !option {
-        // No wrapping - use the value directly
-        quote_spanned! {span=>
-            #ident: self.#ident.clone()
-        }
-    } else if is_option {
-        // Handle Option<Option<T>>
-        quote_spanned! {span=>
-            #ident: match &self.#ident {
-                Some(Some(value)) => Some(value.clone()),
-                Some(None) => None,
-                None => source.#ident.clone(),
-            }
-        }
-    } else {
-        // Handle Option<T>
-        quote_spanned! {span=>
-            #ident: self.#ident.clone().unwrap_or_else(|| source.#ident.clone())
-        }
-    };
-
-    let change_line = if !option {
-        // No wrapping - compare directly
-        quote_spanned! {span=>
-            if self.#ident != source.#ident {
-                return true;
-            }
-        }
-    } else if is_option {
-        // Handle Option<Option<T>>
-        quote_spanned! {span=>
-            if let Some(value) = &self.#ident {
-                if value != &source.#ident {
-                    return true;
-                }
-            }
-        }
-    } else {
-        // Handle Option<T>
-        quote_spanned! {span=>
-            if let Some(value) = &self.#ident {
-                if value != &source.#ident {
-                    return true;
-                }
-            }
-        }
-    };
-
-    context.apply_lines.push(apply_line);
-    context.change_lines.push(change_line);
 }
 
 /// Process a nested field with optional custom type name
@@ -199,23 +146,11 @@ pub fn handle_nested_field(
         .field_types
         .push(quote_spanned! {span=> Option<#update_type> });
 
+    // Add to nested_field_names since nested fields are always Option<T>
+    context.nested_field_names.push(ident.clone());
+
     context.updatable_fields.push(quote_spanned! {span=>
         pub #ident: Option<#update_type>
-    });
-
-    context.apply_lines.push(quote_spanned! {span=>
-        #ident: self.#ident
-            .as_ref()
-            .map(|v| v.apply_to(&source.#ident))
-            .unwrap_or_else(|| source.#ident.clone())
-    });
-
-    context.change_lines.push(quote_spanned! {span=>
-        if let Some(value) = &self.#ident {
-            if value.would_change(&source.#ident) {
-                return true;
-            }
-        }
     });
 }
 
@@ -245,22 +180,6 @@ pub fn handle_json_field(field: &Field, ident: &Ident, context: &mut FieldContex
 
     context.updatable_fields.push(quote_spanned! {span=>
         pub #ident: #json_ty
-    });
-
-    context.apply_lines.push(quote_spanned! {span=>
-        #ident: self.#ident
-            .as_ref()
-            .map(|v| serde_json::from_value(v.clone()).expect("Failed to deserialize JSON"))
-            .unwrap_or_else(|| source.#ident.clone())
-    });
-
-    context.change_lines.push(quote_spanned! {span=>
-        if let Some(value) = &self.#ident {
-            let original = serde_json::to_value(&source.#ident).expect("Failed to serialize to JSON");
-            if *value != original {
-                return true;
-            }
-        }
     });
 }
 

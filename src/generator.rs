@@ -112,6 +112,8 @@ pub fn generate_struct_impl(
     let field_types = &context.field_types;
     let wrapped_field_names = &context.wrapped_field_names;
     let unwrapped_field_names = &context.unwrapped_field_names;
+    let json_field_names = &context.json_field_names;
+    let nested_field_names = &context.nested_field_names;
 
     quote! {
         impl #update_struct_name {
@@ -129,6 +131,90 @@ pub fn generate_struct_impl(
                 #(if let Some(_) = &self.#wrapped_field_names { return false; })*
                 #(if self.#unwrapped_field_names != Default::default() { return false; })*
                 true
+            }
+
+            pub fn field_count(&self) -> usize {
+                let mut count = 0;
+                #(if let Some(_) = &self.#wrapped_field_names { count += 1; })*
+                #(if self.#unwrapped_field_names != Default::default() { count += 1; })*
+                #(if let Some(_) = &self.#json_field_names { count += 1; })*
+                #(if let Some(_) = &self.#nested_field_names { count += 1; })*
+                count
+            }
+
+            pub fn clear(&mut self) {
+                #(self.#wrapped_field_names = None;)*
+                #(self.#unwrapped_field_names = Default::default();)*
+                #(self.#json_field_names = None;)*
+                #(self.#nested_field_names = None;)*
+            }
+
+            pub fn apply_to(&self, target: &mut #struct_name) {
+                // Apply primitive and JSON fields
+                #(if let Some(value) = &self.#wrapped_field_names {
+                    target.#wrapped_field_names = value.clone();
+                })*
+                #(if self.#unwrapped_field_names != Default::default() {
+                    target.#unwrapped_field_names = self.#unwrapped_field_names.clone();
+                })*
+                #(if let Some(value) = &self.#json_field_names {
+                    target.#json_field_names = serde_json::from_value(value.clone()).expect("Failed to deserialize JSON");
+                })*
+
+                // Apply nested fields recursively
+                #(if let Some(nested_update) = &self.#nested_field_names {
+                    nested_update.apply_to(&mut target.#nested_field_names);
+                })*
+            }
+
+            pub fn would_change(&self, target: &#struct_name) -> bool {
+                // Check primitive and JSON fields
+                #(if let Some(value) = &self.#wrapped_field_names {
+                    if value != &target.#wrapped_field_names {
+                        return true;
+                    }
+                })*
+                #(if self.#unwrapped_field_names != Default::default() && self.#unwrapped_field_names != target.#unwrapped_field_names {
+                    return true;
+                })*
+                #(if let Some(value) = &self.#json_field_names {
+                    let original = serde_json::to_value(&target.#json_field_names).expect("Failed to serialize to JSON");
+                    if *value != original {
+                        return true;
+                    }
+                })*
+
+                // Check nested fields recursively
+                #(if let Some(nested_update) = &self.#nested_field_names {
+                    if nested_update.would_change(&target.#nested_field_names) {
+                        return true;
+                    }
+                })*
+
+                false
+            }
+
+            pub fn merge(self, other: Self) -> Self {
+                Self {
+                    #(#wrapped_field_names: other.#wrapped_field_names.or(self.#wrapped_field_names),)*
+                    #(#unwrapped_field_names: if other.#unwrapped_field_names != Default::default() {
+                        other.#unwrapped_field_names
+                    } else {
+                        self.#unwrapped_field_names
+                    },)*
+                    #(#json_field_names: other.#json_field_names.or(self.#json_field_names),)*
+                    #(#nested_field_names: other.#nested_field_names.or(self.#nested_field_names),)*
+                }
+            }
+
+            pub fn has_field(&self, field_name: &str) -> bool {
+                match field_name {
+                    #(stringify!(#wrapped_field_names) => self.#wrapped_field_names.is_some(),)*
+                    #(stringify!(#unwrapped_field_names) => self.#unwrapped_field_names != Default::default(),)*
+                    #(stringify!(#json_field_names) => self.#json_field_names.is_some(),)*
+                    #(stringify!(#nested_field_names) => self.#nested_field_names.is_some(),)*
+                    _ => false,
+                }
             }
         }
     }

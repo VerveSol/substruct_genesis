@@ -153,3 +153,57 @@ fn test_nested_struct_from_source() {
     assert_eq!(update.name, None);
     assert!(update.address.is_none());
 }
+
+#[test]
+fn test_nested_struct_apply_to() {
+    // Create a target struct
+    let mut target = NestedStruct {
+        name: "Alice".to_string(),
+        address: Address {
+            street: "Old Street".to_string(),
+            city: "Old City".to_string(),
+        },
+    };
+
+    // Create an update that changes both the name and the nested address
+    let address_update =
+        AddressSubstruct::new(Some("123 New St".to_string()), Some("New City".to_string()));
+    let update = NestedStructSubstruct::new(Some("Bob".to_string()), Some(address_update));
+
+    // Apply the update
+    update.apply_to(&mut target);
+
+    // Verify the changes
+    assert_eq!(target.name, "Bob");
+    assert_eq!(target.address.street, "123 New St");
+    assert_eq!(target.address.city, "New City");
+}
+
+#[test]
+fn test_nested_struct_would_change() {
+    // Create a target struct
+    let target = NestedStruct {
+        name: "Alice".to_string(),
+        address: Address {
+            street: "Old Street".to_string(),
+            city: "Old City".to_string(),
+        },
+    };
+
+    // Create an update that would change the target
+    let address_update =
+        AddressSubstruct::new(Some("123 New St".to_string()), Some("New City".to_string()));
+    let update = NestedStructSubstruct::new(Some("Bob".to_string()), Some(address_update));
+
+    // Should detect changes
+    assert!(update.would_change(&target));
+
+    // Create an update that wouldn't change the target
+    let no_change_address =
+        AddressSubstruct::new(Some("Old Street".to_string()), Some("Old City".to_string()));
+    let no_change_update =
+        NestedStructSubstruct::new(Some("Alice".to_string()), Some(no_change_address));
+
+    // Should not detect changes
+    assert!(!no_change_update.would_change(&target));
+}
