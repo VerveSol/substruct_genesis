@@ -629,7 +629,7 @@ let update = ConfigSubstruct::new(
 
 ## Requirements
 
-- **Rust 1.56.0+** (Rust Edition 2021)
+- **Rust 1.85.0+** (Rust Edition 2024)
 - `serde` for serialization support
 - Fields must implement `Clone` and `PartialEq`
 

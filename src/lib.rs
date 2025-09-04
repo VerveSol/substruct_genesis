@@ -1,14 +1,14 @@
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};
 use quote::format_ident;
-use syn::{parse_macro_input, Data, DeriveInput};
+use syn::{Data, DeriveInput, parse_macro_input};
 
 mod generator;
 mod processor;
 
 use generator::generate_complete_output;
 use processor::attributes::{extract_struct_name, extract_trait_idents};
-use processor::fields::{get_redis_updatable_kind, process_field, FieldContext};
+use processor::fields::{FieldContext, get_redis_updatable_kind, process_field};
 
 /// Generates a substruct builder for partial updates with comprehensive utility methods.
 ///
@@ -146,7 +146,7 @@ use processor::fields::{get_redis_updatable_kind, process_field, FieldContext};
 ///
 /// # Requirements
 ///
-/// - **Rust 1.56.0+** (Rust Edition 2021)
+/// - **Rust 1.85.0+** (Rust Edition 2024)
 /// - `serde` for serialization support
 /// - Fields must implement `Clone` and `PartialEq`
 /// - At least one field must be tagged with `#[substruct_field]`

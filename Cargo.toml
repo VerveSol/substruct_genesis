@@ -1,8 +1,9 @@
 [package]
 name = "substruct-genesis"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Procedural macros for substruct generation"
+authors = ["Verve <sol.verve@protonmail.com>"]
 license = "MIT"
 
 [lib]
