@@ -1,5 +1,8 @@
 ![Substruct Genesis](assets/logo.png)
 
+[![Documentation](https://img.shields.io/docsrs/substruct-genesis.svg)](https://docs.rs/substruct-genesis)
+[![Crates.io](https://img.shields.io/crates/v/substruct-genesis.svg)](https://crates.io/crates/substruct-genesis)
+
 ## 📚 Table of Contents
 
 - [Overview](#overview)
