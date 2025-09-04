@@ -117,16 +117,63 @@ pub fn generate_struct_impl(
 
     quote! {
         impl #update_struct_name {
+            /// Creates a new substruct with the specified field values.
+            ///
+            /// # Arguments
+            ///
+            /// * `#(#field_names: #field_types)` - The values for each updatable field
+            ///
+            /// # Examples
+            ///
+            /// ```rust,ignore
+            /// let update = #update_struct_name::new(
+            ///     Some("John".to_string()),  // name field
+            ///     Some(true),               // active field
+            /// );
+            /// ```
             pub fn new(#(#field_names: #field_types),*) -> Self {
                 Self {
-                    #(#field_names,)*
+                    #(#field_names),*
                 }
             }
 
+            /// Creates a substruct from an existing instance where all fields indicate "no change".
+            ///
+            /// This is useful when you want to create a substruct that represents the current state
+            /// but doesn't actually change anything when applied.
+            ///
+            /// # Arguments
+            ///
+            /// * `source` - The source struct to create the substruct from
+            ///
+            /// # Examples
+            ///
+            /// ```rust,ignore
+            /// let user = User::new("Alice".to_string(), false, 25);
+            /// let no_change_update = #update_struct_name::from_source(&user);
+            /// assert!(no_change_update.is_empty());
+            /// ```
             pub fn from_source(source: &#struct_name) -> Self {
                 Self::from(source)
             }
 
+            /// Returns `true` if no fields would be changed by this update.
+            ///
+            /// This method checks if all fields are in their "no change" state:
+            /// - Wrapped fields are `None`
+            /// - Unwrapped fields are `Default::default()`
+            /// - JSON fields are `None`
+            /// - Nested fields are `None`
+            ///
+            /// # Examples
+            ///
+            /// ```rust,ignore
+            /// let empty_update = #update_struct_name::default();
+            /// assert!(empty_update.is_empty());
+            ///
+            /// let update = #update_struct_name::new(Some("John".to_string()), None);
+            /// assert!(!update.is_empty());
+            /// ```
             pub fn is_empty(&self) -> bool {
                 #(if let Some(_) = &self.#wrapped_field_names { return false; })*
                 #(if self.#unwrapped_field_names != Default::default() { return false; })*
@@ -135,6 +182,29 @@ pub fn generate_struct_impl(
                 true
             }
 
+            /// Returns the number of fields that have values set (non-default fields).
+            ///
+            /// This method counts fields that would actually change something when applied:
+            /// - Wrapped fields that are `Some(value)`
+            /// - Unwrapped fields that are not `Default::default()`
+            /// - JSON fields that are `Some(value)`
+            /// - Nested fields that are `Some(value)`
+            ///
+            /// # Examples
+            ///
+            /// ```rust,ignore
+            /// let update = #update_struct_name::new(
+            ///     Some("John".to_string()),  // name field is set
+            ///     None,                     // active field is not set
+            /// );
+            /// assert_eq!(update.field_count(), 1);
+            ///
+            /// let full_update = #update_struct_name::new(
+            ///     Some("Alice".to_string()),
+            ///     Some(true),
+            /// );
+            /// assert_eq!(full_update.field_count(), 2);
+            /// ```
             pub fn field_count(&self) -> usize {
                 let mut count = 0;
                 #(if let Some(_) = &self.#wrapped_field_names { count += 1; })*
@@ -144,6 +214,27 @@ pub fn generate_struct_impl(
                 count
             }
 
+            /// Resets all fields to their default values (no change state).
+            ///
+            /// This method sets all fields to their "no change" state:
+            /// - Wrapped fields become `None`
+            /// - Unwrapped fields become `Default::default()`
+            /// - JSON fields become `None`
+            /// - Nested fields become `None`
+            ///
+            /// # Examples
+            ///
+            /// ```rust,ignore
+            /// let mut update = #update_struct_name::new(
+            ///     Some("John".to_string()),
+            ///     Some(true),
+            /// );
+            /// assert_eq!(update.field_count(), 2);
+            ///
+            /// update.clear();
+            /// assert_eq!(update.field_count(), 0);
+            /// assert!(update.is_empty());
+            /// ```
             pub fn clear(&mut self) {
                 #(self.#wrapped_field_names = None;)*
                 #(self.#unwrapped_field_names = Default::default();)*
@@ -151,6 +242,34 @@ pub fn generate_struct_impl(
                 #(self.#nested_field_names = None;)*
             }
 
+            /// Applies the updates to a target struct instance.
+            ///
+            /// This method modifies the target struct by applying all non-default field values
+            /// from this substruct. Fields that are in their "no change" state are ignored.
+            ///
+            /// # Arguments
+            ///
+            /// * `target` - The mutable reference to the target struct to update
+            ///
+            /// # Behavior
+            ///
+            /// - **Wrapped fields**: Only applied if `Some(value)`
+            /// - **Unwrapped fields**: Only applied if not `Default::default()`
+            /// - **JSON fields**: Deserialized and applied if `Some(value)`
+            /// - **Nested fields**: Recursively applied using their own `apply_to` method
+            ///
+            /// # Examples
+            ///
+            /// ```rust,ignore
+            /// let mut user = User::new("Alice".to_string(), false, 25);
+            /// let update = #update_struct_name::new(
+            ///     Some("Bob".to_string()),  // Will change name
+            ///     None,                    // Will not change active
+            /// );
+            ///
+            /// update.apply_to(&mut user);
+            /// // user.name is now "Bob", user.active remains false
+            /// ```
             pub fn apply_to(&self, target: &mut #struct_name) {
                 // Apply primitive and JSON fields
                 #(if let Some(value) = &self.#wrapped_field_names {
@@ -169,6 +288,44 @@ pub fn generate_struct_impl(
                 })*
             }
 
+            /// Checks if applying this update would modify the target struct.
+            ///
+            /// This method compares the values in this substruct with the corresponding fields
+            /// in the target struct to determine if any changes would occur.
+            ///
+            /// # Arguments
+            ///
+            /// * `target` - The target struct to compare against
+            ///
+            /// # Returns
+            ///
+            /// * `true` if applying this update would change the target struct
+            /// * `false` if no changes would occur
+            ///
+            /// # Behavior
+            ///
+            /// - **Wrapped fields**: Compared if `Some(value)` and different from target
+            /// - **Unwrapped fields**: Compared if not `Default::default()` and different from target
+            /// - **JSON fields**: Serialized and compared if `Some(value)` and different from target
+            /// - **Nested fields**: Recursively checked using their own `would_change` method
+            ///
+            /// # Examples
+            ///
+            /// ```rust,ignore
+            /// let user = User::new("Alice".to_string(), false, 25);
+            /// let update = #update_struct_name::new(
+            ///     Some("Bob".to_string()),  // Would change name
+            ///     Some(false),             // Would not change active (same value)
+            /// );
+            ///
+            /// assert!(update.would_change(&user));  // Would change name
+            ///
+            /// let no_change = #update_struct_name::new(
+            ///     Some("Alice".to_string()),  // Same as current name
+            ///     Some(false),               // Same as current active
+            /// );
+            /// assert!(!no_change.would_change(&user));  // No changes
+            /// ```
             pub fn would_change(&self, target: &#struct_name) -> bool {
                 // Check primitive and JSON fields
                 #(if let Some(value) = &self.#wrapped_field_names {
@@ -196,6 +353,42 @@ pub fn generate_struct_impl(
                 false
             }
 
+            /// Combines two substructs, with the `other` substruct taking precedence for conflicting fields.
+            ///
+            /// This method merges the field values from two substructs, with the `other` substruct
+            /// taking precedence when both substructs have values for the same field.
+            ///
+            /// # Arguments
+            ///
+            /// * `other` - The other substruct to merge with (takes precedence for conflicts)
+            ///
+            /// # Returns
+            ///
+            /// A new substruct containing the merged field values.
+            ///
+            /// # Behavior
+            ///
+            /// - **Wrapped fields**: `other` value takes precedence if `Some`, otherwise uses `self`
+            /// - **Unwrapped fields**: `other` value takes precedence if not `Default::default()`, otherwise uses `self`
+            /// - **JSON fields**: `other` value takes precedence if `Some`, otherwise uses `self`
+            /// - **Nested fields**: `other` value takes precedence if `Some`, otherwise uses `self`
+            ///
+            /// # Examples
+            ///
+            /// ```rust,ignore
+            /// let update1 = #update_struct_name::new(
+            ///     Some("Alice".to_string()),  // name field
+            ///     None,                      // active field not set
+            /// );
+            ///
+            /// let update2 = #update_struct_name::new(
+            ///     None,                      // name field not set
+            ///     Some(true),               // active field
+            /// );
+            ///
+            /// let merged = update1.merge(update2);
+            /// // merged has name: Some("Alice") and active: Some(true)
+            /// ```
             pub fn merge(self, other: Self) -> Self {
                 Self {
                     #(#wrapped_field_names: other.#wrapped_field_names.or(self.#wrapped_field_names),)*
@@ -209,6 +402,39 @@ pub fn generate_struct_impl(
                 }
             }
 
+            /// Checks if a specific field has a value set (non-default value).
+            ///
+            /// This method determines whether a field would actually change something when applied.
+            ///
+            /// # Arguments
+            ///
+            /// * `field_name` - The name of the field to check (as a string)
+            ///
+            /// # Returns
+            ///
+            /// * `true` if the field has a value set and would change something
+            /// * `false` if the field is in its "no change" state or doesn't exist
+            ///
+            /// # Behavior
+            ///
+            /// - **Wrapped fields**: Returns `true` if `Some(value)`
+            /// - **Unwrapped fields**: Returns `true` if not `Default::default()`
+            /// - **JSON fields**: Returns `true` if `Some(value)`
+            /// - **Nested fields**: Returns `true` if `Some(value)`
+            /// - **Non-existent fields**: Returns `false`
+            ///
+            /// # Examples
+            ///
+            /// ```rust,ignore
+            /// let update = #update_struct_name::new(
+            ///     Some("Alice".to_string()),  // name field is set
+            ///     None,                      // active field is not set
+            /// );
+            ///
+            /// assert!(update.has_field("name"));    // name field has a value
+            /// assert!(!update.has_field("active")); // active field is not set
+            /// assert!(!update.has_field("age"));    // age field doesn't exist in substruct
+            /// ```
             pub fn has_field(&self, field_name: &str) -> bool {
                 match field_name {
                     #(stringify!(#wrapped_field_names) => self.#wrapped_field_names.is_some(),)*
@@ -219,6 +445,45 @@ pub fn generate_struct_impl(
                 }
             }
 
+            /// Converts the substruct into a flexible HashMap representation with string values.
+            ///
+            /// This method creates a HashMap where keys are field names and values are string
+            /// representations of the field values. This is useful for dynamic field access,
+            /// serialization, or when you need to work with field values in a generic way.
+            ///
+            /// # Returns
+            ///
+            /// A `HashMap<String, String>` containing only fields that have values set.
+            ///
+            /// # Behavior
+            ///
+            /// - **Wrapped fields**: Included if `Some(value)`, formatted using `{:?}`
+            /// - **Unwrapped fields**: Included if not `Default::default()`, formatted using `{:?}`
+            /// - **JSON fields**: Included if `Some(value)`, converted using `.to_string()`
+            /// - **Nested fields**: Recursively converted using their own `into_partial()` method
+            /// - **Fields without values**: Not included in the result
+            ///
+            /// # Examples
+            ///
+            /// ```rust,ignore
+            /// let update = #update_struct_name::new(
+            ///     Some("Alice".to_string()),  // name field
+            ///     Some(true),                // active field
+            /// );
+            ///
+            /// let partial = update.into_partial();
+            ///
+            /// // Check that fields are present
+            /// assert!(partial.contains_key("name"));
+            /// assert!(partial.contains_key("active"));
+            ///
+            /// // Compare actual values (as string representations)
+            /// assert_eq!(partial.get("name"), Some(&"\"Alice\"".to_string()));
+            /// assert_eq!(partial.get("active"), Some(&"true".to_string()));
+            ///
+            /// // Fields that aren't set are not included
+            /// assert!(!partial.contains_key("age")); // age field doesn't exist in substruct
+            /// ```
             pub fn into_partial(self) -> std::collections::HashMap<String, String> {
                 let mut partial = std::collections::HashMap::new();
 
