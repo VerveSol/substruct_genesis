@@ -7,7 +7,7 @@ use syn::{Attribute, Field, Ident, Meta, Token, Type, TypePath};
 /// Enum representing different types of field processing
 #[derive(Debug, Clone)]
 pub enum FieldKind {
-    Primitive { wrap: bool },
+    Primitive { option: bool },
     Nested { nested_type: Option<String> },
     Json,
     Skip,
@@ -45,11 +45,11 @@ impl FieldContext {
     }
 }
 
-/// Process a primitive field with optional wrapping
+/// Process a primitive field with optional Option wrapping
 pub fn handle_primitive_field(
     field: &Field,
     ident: &Ident,
-    wrap: bool,
+    option: bool,
     context: &mut FieldContext,
 ) {
     let span = field.span();
@@ -91,7 +91,7 @@ pub fn handle_primitive_field(
         _ => (ty.clone(), false),
     };
 
-    let update_ty = if !wrap {
+    let update_ty = if !option {
         // No wrapping - use the type directly, regardless of whether it's Option<T>
         quote_spanned! {span=> #ty }
     } else if is_option {
@@ -109,13 +109,13 @@ pub fn handle_primitive_field(
     context.field_names.push(ident.clone());
     context.field_types.push(update_ty.clone());
 
-    if !wrap {
+    if !option {
         context.unwrapped_field_names.push(ident.clone());
     } else {
         context.wrapped_field_names.push(ident.clone());
     }
 
-    let apply_line = if !wrap {
+    let apply_line = if !option {
         // No wrapping - use the value directly
         quote_spanned! {span=>
             #ident: self.#ident.clone()
@@ -136,7 +136,7 @@ pub fn handle_primitive_field(
         }
     };
 
-    let change_line = if !wrap {
+    let change_line = if !option {
         // No wrapping - compare directly
         quote_spanned! {span=>
             if self.#ident != source.#ident {
@@ -273,8 +273,8 @@ pub fn process_field(field: &Field, field_kind: &FieldKind, context: &mut FieldC
 
     match field_kind {
         FieldKind::Skip => return,
-        FieldKind::Primitive { wrap } => {
-            handle_primitive_field(field, ident, *wrap, context);
+        FieldKind::Primitive { option } => {
+            handle_primitive_field(field, ident, *option, context);
         }
         FieldKind::Nested { nested_type } => {
             handle_nested_field(field, ident, nested_type.clone(), context);
@@ -293,10 +293,10 @@ pub fn get_redis_updatable_kind(attrs: &[Attribute]) -> FieldKind {
             let Ok(meta_list) =
                 attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
             else {
-                return FieldKind::Primitive { wrap: true };
+                return FieldKind::Primitive { option: true };
             };
 
-            let mut wrap = true; // Default to wrapping
+            let mut option = true; // Default to Option wrapping
             let mut field_type = None;
             let mut nested_type = None;
 
@@ -314,13 +314,13 @@ pub fn get_redis_updatable_kind(attrs: &[Attribute]) -> FieldKind {
                         }
                     }
                     Meta::NameValue(name_value) => {
-                        if name_value.path.is_ident("wrap") {
+                        if name_value.path.is_ident("option") {
                             if let syn::Expr::Lit(syn::ExprLit {
                                 lit: syn::Lit::Bool(lit_bool),
                                 ..
                             }) = &name_value.value
                             {
-                                wrap = lit_bool.value;
+                                option = lit_bool.value;
                             }
                         } else if name_value.path.is_ident("nested_type") {
                             if let syn::Expr::Lit(syn::ExprLit {
@@ -337,7 +337,7 @@ pub fn get_redis_updatable_kind(attrs: &[Attribute]) -> FieldKind {
             }
 
             match field_type {
-                Some("primitive") => return FieldKind::Primitive { wrap },
+                Some("primitive") => return FieldKind::Primitive { option },
                 Some("nested") => return FieldKind::Nested { nested_type },
                 Some("json") => return FieldKind::Json,
                 Some("skip") => return FieldKind::Skip,

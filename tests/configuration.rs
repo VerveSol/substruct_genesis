@@ -86,7 +86,7 @@ fn test_struct_level_names() {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SubstructBuilder)]
 struct WrapAttributeStruct {
-    #[substruct_field(primitive, wrap = false)]
+    #[substruct_field(primitive, option = false)]
     required_field: u32,
     #[substruct_field(primitive)]
     optional_field: String,

@@ -33,7 +33,7 @@ Built with a clean, modular architecture, the macro separates processing logic f
 
 - **Independent Substructs**: Generated substructs are completely independent of the original struct
 - **Selective Field Inclusion**: Only fields with `#[substruct_field]` attributes are included
-- **Primitive Fields**: Automatically wrapped in `Option<T>` for nullable updates (configurable with `wrap` attribute)
+- **Primitive Fields**: Automatically wrapped in `Option<T>` for nullable updates (configurable with `option` attribute)
 - **Option Fields**: Use `Option<Option<T>>` for clear update semantics
 - **JSON Fields**: Handle complex types as `Option<serde_json::Value>`
 - **Nested Types**: Support nested substruct builders with custom naming
@@ -99,7 +99,7 @@ struct User {
 ### Field Types
 
 #### Primitive Fields (`#[substruct_field(primitive)]`)
-- **Update type**: `Option<T>` (default) or `T` (when `wrap = false`)
+- **Update type**: `Option<T>` (default) or `T` (when `option = false`)
 - **Semantics**: 
   - `Some(value)` = set to value (when wrapped)
   - `None` = no change (when wrapped)
@@ -108,10 +108,10 @@ struct User {
 ```rust
 #[derive(SubstructBuilder)]
 struct User {
-    #[substruct_field(primitive)]                    // wrapped (default)
+    #[substruct_field(primitive)]                    // option wrapped (default)
     name: String,                                    // -> Option<String>
     
-    #[substruct_field(primitive, wrap = false)]      // not wrapped
+    #[substruct_field(primitive, option = false)]      // not option wrapped
     id: u32,                                         // -> u32
 }
 ```
@@ -334,7 +334,7 @@ let company_update = CompanySubstruct::new(
 ```rust
 #[derive(SubstructBuilder)]
 struct Config {
-    #[substruct_field(primitive, wrap = false)]
+    #[substruct_field(primitive, option = false)]
     version: u32,  // Always required, not wrapped in Option
     #[substruct_field(primitive)]
     theme: String, // Optional, wrapped in Option<String>
